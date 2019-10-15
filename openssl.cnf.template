@@ -1,0 +1,143 @@
+[ca]
+default_ca = CA_default                  # The default ca section
+
+[CA_default]
+dir              = %{prefix}/etc/ssl/CA/intermediate
+new_certs_dir    = $dir/newcerts
+certificate      = $dir/certs/cacert.pem
+private_key      = $dir/private/privkey.pem
+database         = $dir/database/index.txt
+serial           = $dir/database/serial
+crl_dir          = $dir/revoked
+crlnumber        = $crl_dir/crlnumber
+RANDFILE         = $dir/private/.rand
+default_md       = sha256                # SHA-1 is deprecated, so use SHA-2 instead.
+default_bits     = 8192
+default_days     = 365
+default_crl_days = 30
+utf8             = yes
+string_mask      = utf8only
+policy           = policy_loose
+email_in_dn      = no                    # Don't add the email into cert DN
+name_opt         = ca_default            # Subject name display option
+cert_opt         = ca_default            # Certificate display option
+copy_extensions  = none
+preserve         = no
+
+[CA_root]
+dir              = %{prefix}/etc/ssl/CA/root
+new_certs_dir    = $dir/newcerts
+certificate      = $dir/certs/cacert.pem
+private_key      = $dir/private/privkey.pem
+database         = $dir/database/index.txt
+serial           = $dir/database/serial
+crl_dir          = $dir/revoked
+crlnumber        = $crl_dir/crlnumber
+RANDFILE         = $dir/private/.rand    # SHA-1 is deprecated, so use SHA-2 instead.
+default_md       = sha256
+default_bits     = 8192
+default_days     = 9125
+default_crl_days = 30
+utf8             = yes
+string_mask      = utf8only
+policy           = policy_strict
+email_in_dn      = no                    # Don't add the email into cert DN
+name_opt         = ca_default            # Subject name display option
+cert_opt         = ca_default            # Certificate display option
+copy_extensions  = none
+preserve         = no
+
+[policy_strict]
+# The root CA should only sign intermediate certificates that match.
+# See the POLICY FORMAT section of `man ca`.
+countryName            = match
+stateOrProvinceName    = optional
+organizationName       = match
+organizationalUnitName = optional
+commonName             = supplied
+emailAddress           = optional
+
+[policy_loose]
+# Allow the intermediate CA to sign a more diverse range of certificates.
+# See the POLICY FORMAT section of `man ca`.
+countryName            = supplied
+stateOrProvinceName    = optional
+localityName           = optional
+organizationName       = supplied
+organizationalUnitName = optional
+commonName             = supplied
+emailAddress           = optional
+
+[v3_ca]
+# Extensions for a typical (rootintermediate) CA (`man x509v3_config`).
+# PKIX recommendation.
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always,issuer
+# This is what PKIX recommends but some broken software chokes on critical
+# extensions.
+#basicConstraints       = critical,CA:true
+# So we do this instead.
+basicConstraints       = CA:true
+keyUsage               = digitalSignature, cRLSign, keyCertSign
+nsCertType             = sslCA, emailCA, objCA
+crlDistributionPoints  = %{distcrlRoot}
+
+[v3_intermediate_ca]
+# Extensions for a typical issuing (next to end user) CA (`man x509v3_config`).
+# PKIX recommendation.
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always,issuer
+# This is what PKIX recommends but some broken software chokes on critical
+# extensions.
+#basicConstraints       = critical,CA:true
+# So we do this instead.
+basicConstraints       = CA:true, pathlen:0
+keyUsage               = digitalSignature, cRLSign, keyCertSign
+nsCertType             = sslCA, emailCA, objCA
+crlDistributionPoints  = %{distcrlRoot}
+
+[usr_cert]
+# Extensions for client certificates (`man x509v3_config`).
+#basicConstraints       = critical, CA:FALSE
+basicConstraints       = CA:FALSE
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always, issuer:always
+keyUsage               = nonRepudiation, digitalSignature, keyEncipherment
+extendedKeyUsage       = serverAuth, clientAuth, emailProtection, codeSigning, msEFS
+nsCertType             = server, client, email, objsign
+crlDistributionPoints  = %{distcrlIntm}
+
+[req]
+default_md         = sha256
+default_bits       = 2048
+default_days       = 365
+default_crl_days   = 30
+default_keyfile    = privkey.pem
+utf8               = yes
+string_mask        = utf8only
+distinguished_name = req_distinguished_name
+attributes         = req_attributes
+x509_extensions    = usr_cert
+
+[req_distinguished_name]
+countryName                 = Country Name (2 letter code)
+countryName_default         = DE
+countryName_min             = 2
+countryName_max             = 2
+stateOrProvinceName         = State, Province or County (full name)
+stateOrProvinceName_default =
+localityName                = Locality Name (eg, city)
+localityName_default        = Ludwigshafen
+organizationName            = Organisation Name (eg, company)
+organizationName_default    = flederwiesel
+organizationalUnitName      = Organisational Unit Name (eg, section)
+commonName                  = Common Name (eg, YOUR name)
+commonName_default          = Tobias Kühne
+commonName_max              = 64
+emailAddress                = Email Address
+emailAddress_max            = 256
+
+[req_attributes]
+challengePassword     = A challenge password
+challengePassword_min = 8
+challengePassword_max = 256

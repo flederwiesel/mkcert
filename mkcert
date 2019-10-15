@@ -1,0 +1,370 @@
+#!/bin/bash
+
+stdout=$(readlink -f /dev/stderr)
+
+backup=true
+debug=${debug:-false}
+force=false
+prefix=${prefix:-}
+sure=
+
+usage()
+{
+	cat <<EOF
+$0
+  -a --applicant=
+  -B --no-backup
+  -c --certname=
+  -d --debug
+  -f --force
+  -h --help
+  -i --issuer=
+  -k --keyname=
+  -K --request-key=
+  -p --prefix=
+  -P --passwd=
+  -r --request=
+  -s --subj= --subject=
+  -S --sign=
+EOF
+
+	exit 0
+}
+
+for arg
+do
+	if [ -n "$expect" ]; then
+		eval "$expect=$arg"
+		unset expect
+	else
+		case "$arg" in
+		-a)
+			expect=applicant
+			;;
+		--applicant=*)
+			applicant=${arg:12}
+			;;
+		-B|--no-backup)
+			backup=false
+			;;
+		-c)
+			expect=certname
+			;;
+		--certname=*)
+			certname="${arg:11}"
+			;;
+		-d)
+			expect=prefix
+			;;
+		--dir=*)
+			prefix="${arg:6}"
+			;;
+		-F)
+			expect=fileext
+			;;
+		--fileext=*)
+			fileext=${args:10}
+			;;
+		-f|--force)
+			force=true
+			;;
+		-h|--help)
+			usage
+			;;
+		-i)
+			expect=issuer
+			;;
+		--issuer=*)
+			issuer=${arg:9}
+			;;
+		-k)
+			expect=keyname
+			;;
+		--keyname=*)
+			keyname=${arg:10}
+			;;
+		-K)
+			expect=requestkey
+			;;
+		--request-key=*)
+			requestkey=${arg:14}
+			;;
+		-p)
+			expect=prefix
+			;;
+		--prefix=*)
+			prefix="${arg:9}"
+			ssldir=
+			;;
+		-P)
+			expect=passwd
+			;;
+		--passwd=*)
+			passwd=${arg:9}
+			;;
+		-r)
+			expect=request
+			;;
+		--request=*)
+			request=${arg:10}
+			;;
+		-s)
+			expect=subject
+			;;
+		--subj=*)
+			subject=${arg:7}
+			;;
+		--subject=*)
+			subject=${arg:10}
+			;;
+		-S|--sign=*)
+			sign=${arg:7}
+			;;
+		esac
+	fi
+done
+
+if $debug; then
+	stderr=$(readlink -f /dev/stderr)
+	openssl=$(which openssl)
+	openssl() {
+		echo -e "\033[33mopenssl $@\033[m" > $stderr
+		$openssl "$@"
+	}
+fi
+
+backup() {
+	for f
+	do
+		if [ -e "$f" ]; then
+			if $backup; then
+				d=$(stat --format=@%Z "$f")
+				d=$(date -d "$d" +%Y%m%d_%H%M%S)
+				mod=$(stat --format=%a "$f")
+				chmod +w "$f"
+				b="$f~$d"
+				mv "$f" "$b"
+				chmod $mod "$b"
+			else
+				rm -f "$f"
+			fi
+		fi
+	done
+}
+
+ssldir="${ssldir:-${prefix}/etc/ssl}"
+
+### Validate parameters
+
+if [ -n "$requestkey" ]; then
+	f="${prefix}/etc/ssl${applicant}/private/${requestkey:-privkey.pem}"
+
+	if [ -f "$f" -o -f "$f.enc" ]; then
+		if ! $force; then
+			echo -e "\033[1:31mKey $f{.enc} already exists. Use --force to overwrite.\033[m" >&2
+			exit 2
+		else
+			if [ -n "${applicant}" ]; then
+				### !!! This is a CA! Do you really want to do this???
+				echo -e "Do you really want to overwrite the ${applicant} secret key?" >$stdout
+				echo -e "If so, please type 'Yes, do as I say!'" >$stdout
+				echo >$stdout
+				read -p "Really? " sure
+
+				if [ "$sure" != "Yes, do as I say!" ]; then
+					echo "Aborted." >&2
+					exit 2
+				fi
+			fi
+
+			# OK, you wanted it. Good for you, I make backups
+			if $backup; then
+				backup "$f" "$f.enc"
+			else
+				rm -f "$f" "$f.enc"
+			fi
+		fi
+	fi
+fi
+
+if [ -n "$request" ]; then
+	f="${ssldir}${applicant}/certs/${certname:-cacert.pem}"
+
+	if [ -f "$f" ]; then
+		if [ $force ]; then
+			rm -f "$f"
+		else
+			echo -e "\033[1:31mRoot key $f already exists. Use --force to overwrite.\033[m" >&2
+			exit 2
+		fi
+	fi
+
+	if [ -z "$subject" ]; then
+		echo -e "\033[1:31m--request needs a --subject!\033[m\n" >&2
+		exit 1
+	fi
+
+	if [ -z "$sign" ]; then
+		if [ -z "$issuer" ]; then
+			echo -e "\033[1:31m--request needs an --issuer!\033[m\n" >&2
+			exit 1
+		fi
+	fi
+fi
+
+if [ -n "$sign" ]; then
+	if [ -z "$passwd" -o -z "$certname" ]; then
+		echo -e "\033[1;31mNeed password\033[m" >&2
+		exit 1
+	fi
+fi
+
+if [ "$applicant" = "$issuer" ]; then
+	request="$certname"
+fi
+
+if [ -n "$applicant" ]; then
+	if [ "$applicant" = "$issuer" ]; then
+		ca=CA_root
+		extensions=v3_ca
+	else
+		ca=CA_root
+		extensions=v3_intermediate_ca
+	fi
+	bits=8192
+else
+	ca=CA_default
+	extensions=usr_cert
+	bits=4096
+fi
+
+### Here we go...
+
+if [ -n "$requestkey" ]; then
+	#  Create a private key
+	if ! result=$(openssl genpkey \
+				-algorithm RSA \
+				-pkeyopt rsa_keygen_bits:$bits \
+				-aes-256-cbc \
+				-out "${ssldir}${applicant}/private/${requestkey:-privkey.pem}.enc" \
+				-pass stdin <<<"$passwd" 2>&1); then
+		echo -e "\033[37;1mCreating private key failed:\033[m" >&2
+		echo -e "  \033[31m$result\033[m" >&2
+
+		exit 11
+	fi
+
+	# Remove passphrase
+	if ! result=$(openssl rsa \
+				-out "${ssldir}${applicant}/private/${requestkey:-privkey.pem}" \
+				-in "${ssldir}${applicant}/private/${requestkey:-privkey.pem}.enc" \
+				-passin stdin <<<"$passwd" 2>&1); then
+		echo -e "\033[37;1mRemoving passphrase from key failed:\033[m" >&2
+		echo -e "  \033[31m$result\033[m" >&2
+		exit 11
+	fi
+
+	chmod 0400 "${ssldir}${applicant}/private/${requestkey:-privkey.pem}"
+	chmod 0400 "${ssldir}${applicant}/private/${requestkey:-privkey.pem}.enc"
+fi
+
+if [ -n "$request" ]; then
+	if [ "$applicant" = "$issuer" ]; then
+		# Self-signed
+		if ! result=$(openssl req \
+					-new \
+					-x509 -extensions ${extensions} -sha512 -days 9125 \
+					-config "${ssldir}/openssl.cnf" \
+					-utf8 \
+					-out "${ssldir}${applicant}/certs/${certname:-cacert.pem}" \
+					-key "${ssldir}${issuer}/private/${keyname:-privkey.pem}" \
+					-subj "$subject" \
+					-passin stdin <<<"$passwd" 2>&1); then
+			echo -e "\033[37;1mCreating CSR failed:\033[m" >&2
+			echo -e "  \033[31m$result\033[m" >&2
+			exit 13
+		fi
+	else
+		if [ -z "$sign" ]; then
+			# Generate a Certificate Signing Request
+			if ! result=$(openssl req \
+						-new \
+						-utf8 \
+						-config ${ssldir}/openssl.cnf \
+						-out "${ssldir}${issuer}/csr/${request:-cert.csr}" \
+						-key "${ssldir}${applicant}/private/${keyname:-privkey.pem}" \
+						-subj "$subject" \
+						-passin stdin <<<"$passwd" 2>&1); then
+				echo -e "\033[37;1mCreating CSR failed:\033[m" >&2
+				echo -e "  \033[31m$result\033[m" >&2
+				exit 12
+			fi
+		fi
+	fi
+fi
+
+if [ -n "$sign" ]; then
+	if [ "$applicant" != "$issuer" ]; then
+		# Create Certificate from Signing Request
+		backup "${ssldir}${applicant}/certs/${sign%.csr}.${fileext:-crt}"
+
+		if ! result=$(openssl ca \
+					-config "${ssldir}/openssl.cnf" \
+					-name ${ca} \
+					-extensions ${extensions} \
+					-notext \
+					-batch \
+					-passin stdin \
+					-cert "${ssldir}${issuer}/certs/${certname:-cacert.pem}" \
+					-keyfile "${ssldir}${issuer}/private/${keyname:-privkey.pem}" \
+					-out "${ssldir}${applicant}/certs/${sign%.csr}.${fileext:-crt}" \
+					-infiles "${ssldir}${issuer}/csr/${sign}" <<< "$passwd" 2>&1); then
+			echo -e "\033[37;1mCreating Certificate from CSR failed:\033[m" >&2
+			echo -e "  \033[31m$result\033[m" >&2
+			exit 13
+		fi
+
+		chmod 0400 "${ssldir}${applicant}/certs/${sign%.csr}.${fileext:-crt}"
+
+		# Our certificate chain file must include the root certificate because
+		# no client application knows about it yet. A better option, particularly
+		# if you're administrating an intranet, is to install your root certificate
+		# on every client that needs to connect. In that case, the chain file needs
+		# only contain your intermediate certificate.
+		if [ -n "$applicant" ]; then
+			# This is the case for intermediate CAs
+			backup "${ssldir}${applicant}/certs/ca-chain.${fileext:-crt}"
+
+			cat "${ssldir}${applicant}/certs/${sign%.csr}.${fileext:-crt}" \
+				"${ssldir}${issuer}/certs/${certname:-cacert.pem}" \
+				> "${ssldir}${applicant}/certs/ca-chain.${fileext:-crt}"
+
+			chmod 0444 "${ssldir}${applicant}/certs/ca-chain.${fileext:-crt}"
+
+			# Check certificate against CA chain
+			if ! result=$(openssl verify \
+						-CAfile "${ssldir}${applicant}/certs/ca-chain.${fileext:-crt}" \
+						"${ssldir}${applicant}/certs/${sign%.csr}.${fileext:-crt}" 2>&1); then
+				echo -e "\033[37;1mCreating certificate chain failed:\033[m" >&2
+				echo -e "  \033[31m$result\033[m" >&2
+				exit 14
+			fi
+		fi
+	fi
+
+	# Create revocation list
+	crl=${issuer##*/}.crl
+
+	if ! result=$(openssl ca \
+				-gencrl \
+				-config "${ssldir}/openssl.cnf" \
+				-name ${ca} \
+				-cert "${ssldir}${issuer}/certs/${certname:-cacert.pem}" \
+				-keyfile "${ssldir}${issuer}/private/${keyname:-privkey.pem}" \
+				-out "${ssldir}${issuer}/revoked/${crl}" \
+				-passin stdin <<<"$passwd" 2>&1); then
+		echo -e "\033[37;1mCreating CRL failed:\033[m" >&2
+		echo -e "  \033[31m$result\033[m" >&2
+		exit 15
+	fi
+fi
