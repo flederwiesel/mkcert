@@ -1,5 +1,8 @@
 #!/bin/bash
 
+### https://security.stackexchange.com/questions/74345/provide-subjectaltname-to-openssl-directly-on-the-command-line
+### https://stackoverflow.com/questions/6194236/openssl-certificate-version-3-with-subject-alternative-name
+
 stdout=$(readlink -f /dev/stderr)
 
 backup=true
@@ -225,9 +228,11 @@ fi
 
 if [ -n "$applicant" ]; then
 	if [ "$applicant" = "$issuer" ]; then
+		# Self-signed root CA
 		ca=CA_root
 		extensions=v3_ca
 	else
+		# CA signs intermediate CA
 		ca=CA_root
 		extensions=v3_intermediate_ca
 	fi
