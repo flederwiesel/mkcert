@@ -164,7 +164,7 @@ if [ -n "$requestkey" ]; then
 
 	if [ -f "$f" -o -f "$f.enc" ]; then
 		if ! $force; then
-			echo -e "\033[1:31mKey $f{.enc} already exists. Use --force to overwrite.\033[m" >&2
+			echo -e "\033[1;31mKey $f{.enc} already exists. Use --force to overwrite.\033[m" >&2
 			exit 2
 		else
 			if [ -n "${applicant}" ]; then
@@ -197,19 +197,19 @@ if [ -n "$request" ]; then
 		if [ $force ]; then
 			rm -f "$f"
 		else
-			echo -e "\033[1:31mRoot key $f already exists. Use --force to overwrite.\033[m" >&2
+			echo -e "\033[1;31mRoot key $f already exists. Use --force to overwrite.\033[m" >&2
 			exit 2
 		fi
 	fi
 
 	if [ -z "$subject" ]; then
-		echo -e "\033[1:31m--request needs a --subject!\033[m\n" >&2
+		echo -e "\033[1;31m--request needs a --subject!\033[m\n" >&2
 		exit 1
 	fi
 
 	if [ -z "$sign" ]; then
 		if [ -z "$issuer" ]; then
-			echo -e "\033[1:31m--request needs an --issuer!\033[m\n" >&2
+			echo -e "\033[1;31m--request needs an --issuer!\033[m\n" >&2
 			exit 1
 		fi
 	fi
