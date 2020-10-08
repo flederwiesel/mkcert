@@ -2,7 +2,7 @@
 default_ca = CA_default                  # The default ca section
 
 [CA_default]
-dir              = %{prefix}/etc/ssl/CA/intermediate
+dir              = %{ssldir}/CA/intermediate
 new_certs_dir    = $dir/newcerts
 certificate      = $dir/certs/cacert.pem
 private_key      = $dir/private/privkey.pem
@@ -25,7 +25,7 @@ copy_extensions  = none
 preserve         = no
 
 [CA_root]
-dir              = %{prefix}/etc/ssl/CA/root
+dir              = %{ssldir}/CA/root
 new_certs_dir    = $dir/newcerts
 certificate      = $dir/certs/cacert.pem
 private_key      = $dir/private/privkey.pem
