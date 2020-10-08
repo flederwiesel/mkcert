@@ -179,6 +179,8 @@ mkdir -p -m 0700 "${ssldir}/private"
 sed "s:%{ssldir}:${ssldir}:g
 s*%{distcrlRoot}*${caRoot[distcrl]}*g
 s*%{distcrlIntm}*${caIntermediate[distcrl]}*g
+${user[altnames]:+s/\[usr_cert\]/&\nsubjectAltName = @alt_names/g}
+${user[altnames]:+\$ a \\\n[alt_names]\n${user[altnames]//:/\\n}}
 " "${scriptdir}/openssl.cnf.template" > "${ssldir}/openssl.cnf"
 
 for issuer in "${caRoot[dir]}" "${caIntermediate[dir]}"
