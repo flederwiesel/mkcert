@@ -18,7 +18,8 @@ $0
   -d --debug
      --genpkey=ca-root,ca-intermediate,user
   -h --help
-  -p --prefix
+  -p --prefix=/path/to:etc/ssl
+     --ssldir
 EOF
 
 	exit 0
@@ -59,6 +60,12 @@ do
 			;;
 		--prefix=*)
 			prefix="${arg:9}"
+			;;
+		--ssldir=*)
+			ssldir="${arg:9}"
+			;;
+		--ssldir)
+			expect=ssldir
 			;;
 		esac
 	fi
@@ -158,7 +165,7 @@ caCertExists() {
 	return 0
 }
 
-export ssldir="${prefix}/etc/ssl"
+export ssldir="${ssldir:-${prefix}/etc/ssl}"
 
 ### Populate folder structure
 
@@ -169,9 +176,10 @@ mkdir -p -m 0700 "${ssldir}/private"
 
 # Create config from template
 #envsubst < "$scriptdir/openssl.cnf.template" > "$scriptdir/openssl.cnf"
-sed "s:%{prefix}:$prefix:g
+sed "s:%{ssldir}:${ssldir}:g
 s*%{distcrlRoot}*${caRoot[distcrl]}*g
-s*%{distcrlIntm}*${caIntermediate[distcrl]}*g" "${prefix}/openssl.cnf.template" > "$scriptdir/etc/ssl/openssl.cnf"
+s*%{distcrlIntm}*${caIntermediate[distcrl]}*g
+" "${scriptdir}/openssl.cnf.template" > "${ssldir}/openssl.cnf"
 
 for issuer in "${caRoot[dir]}" "${caIntermediate[dir]}"
 do
@@ -207,7 +215,7 @@ if $root; then
 
 	if mkkey caRoot; then
 		if result=$(mkcert $force \
-					--prefix="$prefix" \
+					--ssldir="${ssldir}" \
 					--applicant="${caRoot[dir]}" \
 					--request-key="${caRoot[name]}.key" \
 					--passwd="${caRoot[passwd]}"); then
@@ -222,7 +230,7 @@ if $root; then
 	### Create Self-signed CA/root certificate
 
 	if result=$(mkcert \
-				--prefix="$prefix" \
+				--ssldir="${ssldir}" \
 				--issuer="${caRoot[dir]}" \
 				--applicant="${caRoot[dir]}" \
 				--request=- \
@@ -244,7 +252,7 @@ if $intermediate; then
 
 	if mkkey caIntermediate; then
 		if result=$(mkcert $force \
-					--prefix="$prefix" \
+					--ssldir="${ssldir}" \
 					--applicant=${caIntermediate[dir]} \
 					--request-key="${caIntermediate[name]}.key" \
 					--passwd="${caIntermediate[passwd]}"); then
@@ -264,7 +272,7 @@ if $intermediate; then
 	# TODO: Is --issuer necessary?
 
 	if result=$(mkcert \
-				--prefix="$prefix" \
+				--ssldir="${ssldir}" \
 				--issuer="${caRoot[dir]}" \
 				--applicant="${caIntermediate[dir]}" \
 				--request="${caIntermediate[name]}.csr" \
@@ -280,7 +288,7 @@ if $intermediate; then
 	### Create CA/intermediate certificate from CSR
 
 	if result=$(mkcert \
-				--prefix="$prefix" \
+				--ssldir="${ssldir}" \
 				--issuer="${caRoot[dir]}" \
 				--applicant="${caIntermediate[dir]}" \
 				--sign="${caIntermediate[name]}.csr" \
@@ -298,7 +306,7 @@ fi
 
 if mkkey user; then
 	if result=$(mkcert $force \
-				--prefix="$prefix" \
+				--ssldir="${ssldir}" \
 				--request-key="${user[name]}.key" \
 				--passwd="${user[passwd]}"); then
 		# Reset, as we are going to ask each time a key should be created
@@ -317,7 +325,7 @@ fi
 # TODO: Is --issuer necessary?
 
 if result=$(mkcert \
-			--prefix="$prefix" \
+			--ssldir="${ssldir}" \
 			--issuer="${caIntermediate[dir]}" \
 			--request="${user[name]}.csr" \
 			--keyname="${user[name]}.key" \
@@ -333,7 +341,7 @@ fi
 ### Create user certificate from CSR
 
 if result=$(mkcert \
-			--prefix="$prefix" \
+			--ssldir="${ssldir}" \
 			--issuer="${caIntermediate[dir]}" \
 			--sign="${user[name]}.csr" \
 			--certname="${caIntermediate[name]}.crt" \

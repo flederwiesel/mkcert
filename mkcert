@@ -160,7 +160,7 @@ ssldir="${ssldir:-${prefix}/etc/ssl}"
 ### Validate parameters
 
 if [ -n "$requestkey" ]; then
-	f="${prefix}/etc/ssl${applicant}/private/${requestkey:-privkey.pem}"
+	f="${ssldir}${applicant}/private/${requestkey:-privkey.pem}"
 
 	if [ -f "$f" -o -f "$f.enc" ]; then
 		if ! $force; then
