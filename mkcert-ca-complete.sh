@@ -123,12 +123,6 @@ else
 	fi
 fi
 
-# Read a value from mkcert-ca-complete.conf
-# `conf <section> <key>`
-conf() {
-	sed -n '/\['"$1"'\]/,/^$/{ /^'"$2"='/ { s/^$2=//g; p }}' "$config"
-}
-
 mkcert() {
 	$debug && echo -e "\033[33mmkcert $@\033[m" >&2
 	"$scriptdir/mkcert" "$@" >&2
