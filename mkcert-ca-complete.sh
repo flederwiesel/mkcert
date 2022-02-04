@@ -40,6 +40,9 @@ do
 		-c)
 			expect=config
 			;;
+		--config)
+			expect=config
+			;;
 		--config=*)
 			config=${arg:9}
 			;;
