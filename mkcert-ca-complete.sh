@@ -105,19 +105,19 @@ else
 fi
 
 if [ -z "user[subject]" ]; then
-	echo "Line $LINENO" &>2
+	echo "Line $LINENO" >&2
 	exit 1
 else
 	if $intermediate; then
 		if [ -z "caIntermediate[subject]" ]; then
-			echo "Line $LINENO" &>2
+			echo "Line $LINENO" >&2
 			exit 1
 		fi
 	fi
 
 	if $root; then
 		if [ -z "caRoot[subject]" ]; then
-			echo "Line $LINENO" &>2
+			echo "Line $LINENO" >&2
 			exit 1
 		fi
 	fi
