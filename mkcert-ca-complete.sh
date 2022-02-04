@@ -125,8 +125,15 @@ else
 	fi
 fi
 
+if [[ $verbose ]]; then
+	if [ -t 2 ]; then
+		yellow=$'\033[33m'
+		none=$'\033[m'
+	fi
+fi
+
 mkcert() {
-	[[ $verbose ]] && echo -e "\033[33mmkcert $@\033[m" >&2
+	[[ $verbose ]] && echo -e "${yellow}mkcert $@${none}" >&2
 	"$scriptdir/mkcert" $verbose "$@" >&2
 }
 

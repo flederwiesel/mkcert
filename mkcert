@@ -139,9 +139,14 @@ if [[ $verbose ]]; then
 	# while still be able to send stderr to the calling process.
 	exec 3<&2
 
+	if [ -t 3 ]; then
+		yellow=$'\033[33m'
+		none=$'\033[m'
+	fi
+
 	openssl=$(which openssl)
 	openssl() {
-		echo -e "\033[33mopenssl $@\033[m" >&3
+		echo -e "${yellow}openssl $@${none}" >&3
 		$openssl "$@"
 	}
 fi
