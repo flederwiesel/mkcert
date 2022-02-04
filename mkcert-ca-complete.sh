@@ -104,20 +104,20 @@ else
 	exit 1
 fi
 
-if [ -z "user[subject]" ]; then
-	echo "Line $LINENO" >&2
+if [ -z "${user[subject]}" ]; then
+	echo "Please specify subject." >&2
 	exit 1
 else
 	if $intermediate; then
-		if [ -z "caIntermediate[subject]" ]; then
-			echo "Line $LINENO" >&2
+		if [ -z "${caIntermediate[subject]}" ]; then
+			echo "No proper configuration found for intermediate CA." >&2
 			exit 1
 		fi
 	fi
 
 	if $root; then
-		if [ -z "caRoot[subject]" ]; then
-			echo "Line $LINENO" >&2
+		if [ -z "${caRoot[subject]}" ]; then
+			echo "No proper configuration found for root CA." >&2
 			exit 1
 		fi
 	fi
