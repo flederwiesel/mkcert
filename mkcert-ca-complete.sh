@@ -5,7 +5,6 @@ scriptdir=$(dirname "$this")
 
 intermediate=false
 root=false
-debug=false
 prefix=.
 
 usage()
@@ -15,11 +14,11 @@ $0
      --ca-intermediate
      --ca-root
   -c --config
-  -d --debug
      --genpkey=ca-root,ca-intermediate,user
   -h --help
   -p --prefix=/path/to:etc/ssl
      --ssldir
+  -v --verbose
 EOF
 
 	exit 0
@@ -44,9 +43,6 @@ do
 		--config=*)
 			config=${arg:9}
 			;;
-		-d|--debug)
-			export debug=true
-			;;
 		--genpkey=*)
 			genpkey=${arg:10}
 			echo "$genpkey" | grep -Fq 'root' && root=true
@@ -66,6 +62,9 @@ do
 			;;
 		--ssldir)
 			expect=ssldir
+			;;
+		-v|--verbose)
+			verbose="$arg"
 			;;
 		esac
 	fi
@@ -124,8 +123,8 @@ else
 fi
 
 mkcert() {
-	$debug && echo -e "\033[33mmkcert $@\033[m" >&2
-	"$scriptdir/mkcert" "$@" >&2
+	[[ $verbose ]] && echo -e "\033[33mmkcert $@\033[m" >&2
+	"$scriptdir/mkcert" $verbose "$@" >&2
 }
 
 mkkey() {

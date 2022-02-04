@@ -4,7 +4,6 @@
 ### https://stackoverflow.com/questions/6194236/openssl-certificate-version-3-with-subject-alternative-name
 
 backup=true
-debug=${debug:-false}
 force=false
 prefix=${prefix:-}
 sure=
@@ -16,7 +15,6 @@ $0
   -a --applicant=
   -B --no-backup
   -c --certname=
-  -d --debug
   -f --force
   -h --help
   -i --issuer=
@@ -27,6 +25,7 @@ $0
   -r --request=
   -s --subj= --subject=
   -S --sign=
+  -v --verbose
 EOF
 
 	exit 0
@@ -109,6 +108,12 @@ do
 		--request=*)
 			request=${arg:10}
 			;;
+		--ssldir=*)
+			ssldir=${arg:9}
+			;;
+		--ssldir)
+			expect=ssldir
+			;;
 		-s)
 			expect=subject
 			;;
@@ -121,11 +126,14 @@ do
 		-S|--sign=*)
 			sign=${arg:7}
 			;;
+		-v|--verbose)
+			verbose="$arg"
+			;;
 		esac
 	fi
 done
 
-if $debug; then
+if [[ $verbose ]]; then
 	# If openssl stderr shall be captured, we will not see the message below
 	# Duplicate stderr into &3, so we can write message to original stderr,
 	# while still be able to send stderr to the calling process.

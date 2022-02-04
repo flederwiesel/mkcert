@@ -5,10 +5,10 @@ Completely sets up your root/intermediate CA and issues one user certificate bas
 ```
      --ca-intermediate                      Create certificates from intermediate CA down to user.
      --ca-root                              Create all certificates including root.
-  -d --debug
      --genpkey=ca-root,ca-intermediate,user Create new private key before certificate creation. Sets --ca-root or --ca-intermediate accordingly.
   -h --help
   -p --prefix                               ... of ssldir (which defaults to ./etc/ssl).
+  -v --verbose
 ```
 
 #### Exit Codes
@@ -50,7 +50,6 @@ passwd=********
   -a --applicant=/CA/root|/CA/intermediate| Request originator. 'user', if empty.
   -B --no-backup                            Backup private keys and certificates
   -c --certname=                            Certificate to be created
-  -d --debug
   -f --force                                Overwrite private key as specified in --request-key
   -h --help
   -i --issuer=/CA/root|/CA/intermediate
@@ -61,6 +60,7 @@ passwd=********
   -r --request=                             CSR name
   -s --subj= --subject=
   -S --sign=                                CSR to be signed within --issuer
+  -v --verbose
 ```
 
 #### Environment variables
