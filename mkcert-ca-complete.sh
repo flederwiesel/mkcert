@@ -131,7 +131,7 @@ conf() {
 
 mkcert() {
 	$debug && echo -e "\033[33mmkcert $@\033[m" >&2
-	"$scriptdir/mkcert" "$@"
+	"$scriptdir/mkcert" "$@" >&2
 }
 
 mkkey() {
