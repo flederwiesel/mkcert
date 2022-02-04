@@ -1,0 +1,23 @@
+[
+	{
+		"name": "ca-root",
+		"subject" :"/C=??/L=City/O=organisation/CN=ca-root-name",
+		"dir": "CA/root",
+		"passwd": "~/*'\"'\"'´`\"?!$h|#*",
+		"distcrl": "URI:https://www.example.com/CA/root.crl"
+	},
+	{
+		"name": "ca-intermediate",
+		"subject": "/C=??/L=City/O=organisation/OU=unit/CN=ca-intermediate-name",
+		"dir": "CA/intermediate",
+		"passwd": "'''\"\"\"``$(*)",
+		"distcrl": "URI:https://www.example.com/CA/intermediate.crl"
+	},
+	{
+		"name": "user",
+		"subject": "/C=??/L=City/O=organisation/OU=unit/CN=localhost",
+		"dir": "",
+		"passwd": "$\"'\u0022\u0027********",
+		"altnames": "DNS.1=www.example.com:DNS.2=*.example.org:IP.1=127.0.0.1:IP.2=192.168.0.1"
+	}
+]

@@ -74,51 +74,32 @@ do
 done
 
 if [ -z "$config" ]; then
-	if [ -f "$HOME/mkcert-ca-complete.conf" ]; then
-		config="$HOME/mkcert-ca-complete.conf"
+	if [ -f "$HOME/mkcert-ca-complete.conf.json" ]; then
+		config="$HOME/mkcert-ca-complete.conf.json"
 	else
-		config="$scriptdir/mkcert-ca-complete.conf"
+		config="$scriptdir/mkcert-ca-complete.conf.json"
 	fi
 
 	echo Using parameters from "$config"
 fi
 
-if settings=$(awk 'BEGIN { q = sprintf("%c", 0x27) }
-
-			/\[.*\]/ {
-				var = gensub(/[][]/, "", "g", $1)
-			}
-
-			/^[^#]+=/ {
-				key = gensub(/=.*/, "", "g", $0)
-				value = gensub(/^[^=]+=/, "", "g", $0)
-				value = gensub(/\047/, "\047\"\047\"\047", "g", value)
-
-				print "declare -A " var
-				printf(var "[" key "]=\047" value "\047\n")
-			}
-			' "$config" 2>&1); then
-	eval "$settings"
-	unset settings
-else
-	echo -e "\033[37;1mUnable to read configuration:\033[m" >&2
-	echo -e "  \033[31m${result:-'$config' not found}\033[m" >&2
-	exit 1
-fi
+declare -A "caRoot=(        $(jq -r '.[] | select(.name=="ca-root")         | to_entries[] | "[" + .key + "]=" + @sh "\(.value)"' "$config"))"
+declare -A "caIntermediate=($(jq -r '.[] | select(.name=="ca-intermediate") | to_entries[] | "[" + .key + "]=" + @sh "\(.value)"' "$config"))"
+declare -A "user=(          $(jq -r '.[] | select(.name=="user")            | to_entries[] | "[" + .key + "]=" + @sh "\(.value)"' "$config"))"
 
 if [ -z "${user[subject]}" ]; then
 	echo "Please specify subject." >&2
 	exit 1
 else
 	if $intermediate; then
-		if [ -z "${caIntermediate[subject]}" ]; then
+		if [[ -z "${caIntermediate[subject]}" ]]; then
 			echo "No proper configuration found for intermediate CA." >&2
 			exit 1
 		fi
 	fi
 
 	if $root; then
-		if [ -z "${caRoot[subject]}" ]; then
+		if [[ -z "${caRoot[subject]}" ]]; then
 			echo "No proper configuration found for root CA." >&2
 			exit 1
 		fi

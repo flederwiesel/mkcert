@@ -1,6 +1,7 @@
 ### mkcert-ca-complete.sh
 
-Completely sets up your root/intermediate CA and issues one user certificate based on the values found in `mkcert-ca-complete.conf`.
+Completely sets up your root/intermediate CA and issues one user certificate
+based on the values found in `mkcert-ca-complete.conf.json`.
 
 ```
      --ca-intermediate                      Create certificates from intermediate CA down to user.
@@ -26,26 +27,31 @@ ssldir=.
 - 13 Certificate verification failed
 - 14 Creating CRL failed
 
-### $HOME/mkcert-ca-complete.conf
+### `mkcert-ca-complete.conf.json`
 
-```
-[caRoot]
-dir=/CA/root
-name=ca-root
-subject=/C=??/L=City/O=organisation/CN=ca-root-name
-passwd=~/*'"'"'´`"?!$h|#*
-distcrl=URI:https://www.example.com/CA/root.crl
+Configuration file containing an array of entity objects identified by "name".
+Currently, only a set of known names is supported according to `mkcert-ca-complete.sh` options:
 
-[caIntermediate]
-dir=/CA/intermediate
-name=ca-intermediate
-subject=/C=??/L=City/O=organisation/OU=unit/CN=ca-intermediate-name
-passwd='''"""``$(*)
-distcrl=URI:https://www.example.com/CA/intermediate.crl
+- `{ "name": "ca-root" }`
+- `{ "name": "ca-intermediate" }`
+- `{ "name": "user" }`
 
-[user]
-dir=localhost
-name=localhost
-subject=/C=??/L=City/O=organisation/OU=unit/CN=localhost
-passwd=********
-```
+Each object must contain
+
+- "subject" - certificate DN
+- "altnames" - certificate subject alternative names, colon-separated
+- "password"
+- "dir" - location of the files to be created (below `--ssldir`)
+
+#### Environment variables
+
+ssldir=.
+
+#### Exit Codes
+-  1 Invalid parameter
+-  2 File exists
+- 11 Creating private key (or removing passphrase from it) failed
+- 12 Creating CSR failed
+- 13 Creating Certificate (self-signed or from CSR) failed
+- 14 Creating certificate chain failed
+- 15 Creating CRL failed
