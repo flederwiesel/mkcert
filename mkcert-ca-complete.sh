@@ -1,6 +1,6 @@
 #!/bin/bash
 
-this=$(readlink -f "${BASH_SOURCE[0]}")
+this=$(realpath "${BASH_SOURCE[0]}")
 scriptdir=$(dirname "$this")
 
 intermediate=false
