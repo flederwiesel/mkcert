@@ -515,7 +515,7 @@ if $root || $intermediate; then
 
 	:> tmp/certmgr-add.bat
 
-	cat <<-EOF > tmp/certmgr-rm.bat
+	sed 's/$/\r/g' <<-EOF > tmp/certmgr-rm.bat
 		:: This script is intended for debugging only!
 		:: Do not use this script in a production environment, as it
 		:: may leave your security (trust) settings misconfigured.
@@ -535,11 +535,11 @@ EOF
 
 		name=$(sed -r 's#.*/CN=(([^/]|\\/)+).*#\1#g' <<<"${!s}")
 
-		cat <<EOF >> tmp/certmgr-rm.bat
-:root
-:: Enter cert # from the above list to delete-->
-echo 1 | %~dp0\..\bin\certmgr.exe -del -c -n "$name" -s root
-if errorlevel 0 goto root
+		sed 's/$/\r/g' <<-EOF >> tmp/certmgr-rm.bat
+			:root
+			:: Enter cert # from the above list to delete-->
+			echo 1 | %~dp0\..\bin\certmgr.exe -del -c -n "$name" -s root
+			if errorlevel 0 goto root
 EOF
 	fi
 
@@ -555,14 +555,11 @@ EOF
 
 		name=$(sed -r 's#.*/CN=(([^/]|\\/)+).*#\1#g' <<<"${!s}")
 
-		cat <<EOF >> tmp/certmgr-rm.bat
-:intermediate
-:: Enter cert # from the above list to delete-->
-echo 1 | %~dp0\..\bin\certmgr.exe -del -c -n "$name" -s ca
-if errorlevel 0 goto intermediate
+		sed 's/$/\r/g' <<-EOF >> tmp/certmgr-rm.bat
+			:intermediate
+			:: Enter cert # from the above list to delete-->
+			echo 1 | %~dp0\..\bin\certmgr.exe -del -c -n "$name" -s ca
+			if errorlevel 0 goto intermediate
 EOF
 	fi
-
-	sed -i 's/$/\r/g' tmp/certmgr-add.bat
-	sed -i 's/$/\r/g' tmp/certmgr-rm.bat
 fi
