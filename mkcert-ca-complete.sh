@@ -165,6 +165,7 @@ backup()
 }
 
 ssldir="${ssldir:-${prefix}/etc/ssl}"
+ssldir="${ssldir#./}"
 
 ### Populate folder structure
 
@@ -532,10 +533,11 @@ EOF
 			d="caRoot[dir]"
 			n="caRoot[name]"
 			s="caRoot[subject]"
-			cert=$(cygpath --absolute --windows "${ssldir}/${!d}/certs/${!n}.crt")
+			# Build DOS path to certificate
+			path="%~dp0\\..\\${ssldir//\//\\}\\${!d//\//\\}\\certs\\${!n}.crt"
 
-			# Order is important here!
-			echo "%~dp0\\..\\bin\\certmgr.exe -add -c \"$cert\" -s root" >> tmp/certmgr-add.bat
+			# Order of arguments is important here - certmgr.exe is not that flexible...
+			echo "%~dp0\\..\\bin\\certmgr.exe -add -c \"$path\" -s root" >> "$scriptdir/tmp/certmgr-add.bat"
 
 			name=$(sed -r 's#.*/CN=(([^/]|\\/)+).*#\1#g' <<<"${!s}")
 
@@ -551,10 +553,11 @@ EOF
 			d="caIntermediate[dir]"
 			n="caIntermediate[name]"
 			s="caIntermediate[subject]"
-			cert=$(cygpath --absolute --windows "${ssldir}/${!d}/certs/${!n}.crt")
+			# Build DOS path to certificate
+			path="%~dp0\\..\\${ssldir//\//\\}\\${!d//\//\\}\\certs\\${!n}.crt"
 
-			# Order is important here!
-			echo "%~dp0\\..\\bin\\certmgr.exe -add -c \"$cert\" -s ca" >> tmp/certmgr-add.bat
+			# Order of arguments is important here - certmgr.exe is not that flexible...
+			echo "%~dp0\\..\\bin\\certmgr.exe -add -c \"$path\" -s ca" >> "$scriptdir/tmp/certmgr-add.bat"
 
 			name=$(sed -r 's#.*/CN=(([^/]|\\/)+).*#\1#g' <<<"${!s}")
 
