@@ -511,70 +511,58 @@ chmod 0644 "${ssldir}/${user[dir]}/certs/${user[name]}-chain.crt"
 ### Create scripts for adding/removing certificates to/from store
 
 if $root || $intermediate; then
-	system=$(uname -s)
+	mkdir -p tmp
 
-	case "${system^^}" in
-	CYGWIN*) ;&
-	MINGW*)
+	:> tmp/certmgr-add.bat
 
-		mkdir -p tmp
-
-		:> tmp/certmgr-add.bat
-
-		cat <<-EOF > tmp/certmgr-rm.bat
-			:: This script is intended for debugging only!
-			:: Do not use this script in a production environment, as it
-			:: may leave your security (trust) settings misconfigured.
-			:: You have been warned!
-			chcp 65001
+	cat <<-EOF > tmp/certmgr-rm.bat
+		:: This script is intended for debugging only!
+		:: Do not use this script in a production environment, as it
+		:: may leave your security (trust) settings misconfigured.
+		:: You have been warned!
+		chcp 65001
 EOF
 
-		if $root; then
-			d="caRoot[dir]"
-			n="caRoot[name]"
-			s="caRoot[subject]"
-			# Build DOS path to certificate
-			path="%~dp0\\..\\${ssldir//\//\\}\\${!d//\//\\}\\certs\\${!n}.crt"
+	if $root; then
+		d="caRoot[dir]"
+		n="caRoot[name]"
+		s="caRoot[subject]"
+		# Build DOS path to certificate
+		path="%~dp0\\..\\${ssldir//\//\\}\\${!d//\//\\}\\certs\\${!n}.crt"
 
-			# Order of arguments is important here - certmgr.exe is not that flexible...
-			echo "%~dp0\\..\\bin\\certmgr.exe -add -c \"$path\" -s root" >> "$scriptdir/tmp/certmgr-add.bat"
+		# Order of arguments is important here - certmgr.exe is not that flexible...
+		echo "%~dp0\\..\\bin\\certmgr.exe -add -c \"$path\" -s root" >> "$scriptdir/tmp/certmgr-add.bat"
 
-			name=$(sed -r 's#.*/CN=(([^/]|\\/)+).*#\1#g' <<<"${!s}")
+		name=$(sed -r 's#.*/CN=(([^/]|\\/)+).*#\1#g' <<<"${!s}")
 
-			cat <<EOF >> tmp/certmgr-rm.bat
+		cat <<EOF >> tmp/certmgr-rm.bat
 :root
 :: Enter cert # from the above list to delete-->
 echo 1 | %~dp0\..\bin\certmgr.exe -del -c -n "$name" -s root
 if errorlevel 0 goto root
 EOF
-		fi
+	fi
 
-		if $intermediate; then
-			d="caIntermediate[dir]"
-			n="caIntermediate[name]"
-			s="caIntermediate[subject]"
-			# Build DOS path to certificate
-			path="%~dp0\\..\\${ssldir//\//\\}\\${!d//\//\\}\\certs\\${!n}.crt"
+	if $intermediate; then
+		d="caIntermediate[dir]"
+		n="caIntermediate[name]"
+		s="caIntermediate[subject]"
+		# Build DOS path to certificate
+		path="%~dp0\\..\\${ssldir//\//\\}\\${!d//\//\\}\\certs\\${!n}.crt"
 
-			# Order of arguments is important here - certmgr.exe is not that flexible...
-			echo "%~dp0\\..\\bin\\certmgr.exe -add -c \"$path\" -s ca" >> "$scriptdir/tmp/certmgr-add.bat"
+		# Order of arguments is important here - certmgr.exe is not that flexible...
+		echo "%~dp0\\..\\bin\\certmgr.exe -add -c \"$path\" -s ca" >> "$scriptdir/tmp/certmgr-add.bat"
 
-			name=$(sed -r 's#.*/CN=(([^/]|\\/)+).*#\1#g' <<<"${!s}")
+		name=$(sed -r 's#.*/CN=(([^/]|\\/)+).*#\1#g' <<<"${!s}")
 
-			cat <<EOF >> tmp/certmgr-rm.bat
+		cat <<EOF >> tmp/certmgr-rm.bat
 :intermediate
 :: Enter cert # from the above list to delete-->
 echo 1 | %~dp0\..\bin\certmgr.exe -del -c -n "$name" -s ca
 if errorlevel 0 goto intermediate
 EOF
-		fi
+	fi
 
-		sed -i 's/$/\r/g' tmp/certmgr-add.bat
-		sed -i 's/$/\r/g' tmp/certmgr-rm.bat
-
-		;;
-
-	LINUX*)
-		;;
-	esac
+	sed -i 's/$/\r/g' tmp/certmgr-add.bat
+	sed -i 's/$/\r/g' tmp/certmgr-rm.bat
 fi
