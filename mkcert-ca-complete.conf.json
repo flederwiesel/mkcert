@@ -14,10 +14,17 @@
 		"distcrl": "URI:https://www.example.com/CA/intermediate.crl"
 	},
 	{
-		"name": "user",
+		"name": "localhost",
 		"subject": "/C=??/L=City/O=organisation/OU=unit/CN=localhost",
 		"dir": "",
 		"passwd": "$\"'\u0022\u0027********",
-		"altnames": "DNS.1=www.example.com:DNS.2=*.example.org:IP.1=127.0.0.1:IP.2=192.168.0.1"
+		"altnames": "IP.1=127.0.0.1:IP.2=192.168.0.1"
+	},
+	{
+		"name": "example.com",
+		"subject": "/C=??/L=City/O=organisation/OU=unit/CN=example.com",
+		"dir": "",
+		"passwd": "$\"'\u0022\u0027********",
+		"altnames": "DNS.1=www.example.com:DNS.2=*.example.org:IP.1=192.168.1.1"
 	}
 ]

@@ -1,7 +1,7 @@
 ### mkcert-ca-complete.sh
 
-Completely sets up your root/intermediate CA and issues one user certificate
-based on the values found in `mkcert-ca-complete.conf.json`.
+Completely sets up your root/intermediate CA and issues one or more
+user certificates based on the values found in `mkcert-ca-complete.conf.json`.
 
 ```
      --ca-intermediate                      Create certificates from intermediate CA down to user.
@@ -30,11 +30,6 @@ ssldir=.
 ### `mkcert-ca-complete.conf.json`
 
 Configuration file containing an array of entity objects identified by "name".
-Currently, only a set of known names is supported according to `mkcert-ca-complete.sh` options:
-
-- `{ "name": "ca-root" }`
-- `{ "name": "ca-intermediate" }`
-- `{ "name": "user" }`
 
 Each object must contain
 
@@ -43,11 +38,17 @@ Each object must contain
 - "password"
 - "dir" - location of the files to be created (below `--ssldir`)
 
+Currently, there are only two CAs of known names according to `mkcert-ca-complete.sh` options:
+
+- `{ "name": "ca-root" }`
+- `{ "name": "ca-intermediate" }`
+
 #### Environment variables
 
 ssldir=.
 
 #### Exit Codes
+
 -  1 Invalid parameter
 -  2 File exists
 - 11 Creating private key (or removing passphrase from it) failed
