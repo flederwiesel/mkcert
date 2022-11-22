@@ -213,13 +213,13 @@ do
 
 		caRoot[pkey]="${ssldir}/${caRoot[dir]}/private/${caRoot[name]}.key"
 
-		if [[ -f "${caRoot[pkey]}.enc" ]]; then
+		if [[ -f "${caRoot[pkey]}" ]]; then
 			if [[ $genpkey =~ root ]]; then
-				backup "${caRoot[pkey]}" "${caRoot[pkey]}.enc"
-				caRoot[genpkey]="${caRoot[pkey]}.enc"
+				backup "${caRoot[pkey]}"
+				caRoot[genpkey]="${caRoot[pkey]}"
 			fi
 		else
-			caRoot[genpkey]="${caRoot[pkey]}.enc"
+			caRoot[genpkey]="${caRoot[pkey]}"
 		fi
 
 		if [[ ${caRoot[genpkey]} ]]; then
@@ -233,20 +233,6 @@ do
 				chmod 0400 "${caRoot[genpkey]}"
 			else
 				echo -e "\033[37;1mCreating private key failed:\033[m" >&2
-				echo -e "  \033[31m$result\033[m" >&2
-				exit 10
-			fi
-
-			# Remove passphrase
-
-			if result=$(echo -n "${caRoot[passwd]}" |
-					openssl rsa \
-						-out "${caRoot[pkey]}" \
-						-in "${caRoot[genpkey]}" \
-						-passin stdin 2>&1); then
-				chmod 0400 "${caRoot[pkey]}"
-			else
-				echo -e "\033[37;1mRemoving passphrase from key failed:\033[m" >&2
 				echo -e "  \033[31m$result\033[m" >&2
 				exit 10
 			fi
@@ -286,11 +272,11 @@ do
 
 		if [[ -f "${caIntermediate[pkey]}" ]]; then
 			if [[ $genpkey =~ intermediate ]]; then
-				backup "${caIntermediate[pkey]}" "${caIntermediate[pkey]}.enc"
-				caIntermediate[genpkey]="${caIntermediate[pkey]}.enc"
+				backup "${caIntermediate[pkey]}"
+				caIntermediate[genpkey]="${caIntermediate[pkey]}"
 			fi
 		else
-			caIntermediate[genpkey]="${caIntermediate[pkey]}.enc"
+			caIntermediate[genpkey]="${caIntermediate[pkey]}"
 		fi
 
 		if [[ ${caIntermediate[genpkey]} ]]; then
@@ -304,20 +290,6 @@ do
 				chmod 0400 "${caIntermediate[genpkey]}"
 			else
 				echo -e "\033[37;1mCreating private key failed:\033[m" >&2
-				echo -e "  \033[31m$result\033[m" >&2
-				exit 10
-			fi
-
-			# Remove passphrase
-
-			if result=$(echo -n "${caIntermediate[passwd]}" |
-					openssl rsa \
-						-out "${caIntermediate[pkey]}" \
-						-in "${caIntermediate[genpkey]}" \
-						-passin stdin 2>&1); then
-				chmod 0400 "${caIntermediate[pkey]}"
-			else
-				echo -e "\033[37;1mRemoving passphrase from key failed:\033[m" >&2
 				echo -e "  \033[31m$result\033[m" >&2
 				exit 10
 			fi
@@ -398,13 +370,13 @@ do
 
 	user[pkey]="${ssldir}/${user[dir]}/private/${user[name]}.key"
 
-	if [[ -f "${user[pkey]}.enc" ]]; then
+	if [[ -f "${user[pkey]}" ]]; then
 		if [[ $genpkey =~ user ]]; then
-			backup "${user[pkey]}" "${user[pkey]}.enc"
-			user[genpkey]="${user[pkey]}.enc"
+			backup "${user[pkey]}"
+			user[genpkey]="${user[pkey]}"
 		fi
 	else
-		user[genpkey]="${user[pkey]}.enc"
+		user[genpkey]="${user[pkey]}"
 	fi
 
 	if [[ ${user[genpkey]} ]]; then
@@ -418,20 +390,6 @@ do
 			chmod 0400 "${user[genpkey]}"
 		else
 			echo -e "\033[37;1mCreating private key failed:\033[m" >&2
-			echo -e "  \033[31m$result\033[m" >&2
-			exit 10
-		fi
-
-		# Remove passphrase
-
-		if result=$(echo -n "${user[passwd]}" |
-				openssl rsa \
-					-out "${user[pkey]}" \
-					-in "${user[genpkey]}" \
-					-passin stdin 2>&1); then
-			chmod 0400 "${user[pkey]}"
-		else
-			echo -e "\033[37;1mRemoving passphrase from key failed:\033[m" >&2
 			echo -e "  \033[31m$result\033[m" >&2
 			exit 10
 		fi
