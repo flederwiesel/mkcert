@@ -108,7 +108,7 @@ fi
 
 if [[ $verbose ]]; then
 
-	if [ -t 2 ]; then
+	if [ -t 1 ]; then
 		yellow=$'\033[33m'
 		none=$'\033[m'
 	fi
@@ -119,7 +119,7 @@ if [[ $verbose ]]; then
 		exit 2
 	}
 
-	exec 3<&2
+	exec 3<&1
 
 	openssl() {
 		local arg
