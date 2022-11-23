@@ -4,9 +4,7 @@ Completely sets up your root/intermediate CA and issues one or more
 user certificates based on the values found in `mkcert-ca-complete.conf.json`.
 
 ```
-     --ca-intermediate                      Create certificates from intermediate CA down to user.
-     --ca-root                              Create all certificates including root.
-     --genpkey=ca-root,ca-intermediate,user Create new private key before certificate creation. Sets --ca-root or --ca-intermediate accordingly.
+     --genpkey=ca-root,ca-intermediate,name Force creation of private key before certificate creation. Add CA name to arguments accordingly.
   -h --help
   -p --prefix                               ... of ssldir (which defaults to ./etc/ssl).
   -v --verbose
