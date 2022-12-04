@@ -25,6 +25,7 @@ $0 name [name [name ...]]
 
   -c --config=
      --genpkey=ca-root,ca-intermediate,name
+         Force re-creation of private key for entities separated by --separator
   -h --help
   -p --prefix=/path/to:etc/ssl
      --separator=,
@@ -164,23 +165,6 @@ fromJson()
 declare -A "caRoot=($(fromJson ca-root))"
 declare -A "caIntermediate=($(fromJson ca-intermediate))"
 
-if [[ $root ]]; then
-	if [[ -z "${caRoot[subject]}" ]]; then
-		echo "No proper configuration found for root CA." >&2
-		exit 1
-	fi
-fi
-
-if [[ $intermediate ]]; then
-	if [[ -z "${caIntermediate[subject]}" ]]; then
-		echo "No proper configuration found for intermediate CA." >&2
-		exit 1
-	fi
-fi
-
-caRoot[pkey]="${ssldir}/${caRoot[dir]}/private/${caRoot[name]}.key"
-caIntermediate[pkey]="${ssldir}/${caIntermediate[dir]}/private/${caIntermediate[name]}.key"
-
 ### Populate folder structure
 
 cd "$scriptdir"
@@ -231,32 +215,50 @@ do
 		exit 1
 	fi
 
+	if [ -z "${user[issuer]}" ]; then
+		echo "Please specify issuer for '$name'." >&2
+		exit 1
+	fi
+
+	declare -A "ca=($(fromJson "${user[issuer]}"))"
+
+	if [ -z "${ca[subject]}" ]; then
+		echo "Please specify subject for issuing CA '${ca[name]}'." >&2
+		exit 1
+	fi
+
+	if [ -z "${ca[ca]}" ]; then
+		echo "Please specify type for issuing CA '${ca[name]}'." >&2
+		exit 1
+	fi
+
+	ca[pkey]="${ssldir}/${ca[dir]}/private/${ca[name]}.key"
 	user[pkey]="${ssldir}/${user[dir]}/private/${user[name]}.key"
 
 	if [[ ca-root == ${user[name]} ]]; then
 
 		### Create CA/root private key, if not found or explicitly requested
 
-		if [[ -f "${caRoot[pkey]}" ]]; then
+		if [[ -f "${user[pkey]}" ]]; then
 			if inArray genpkey ca-root; then
-				backup "${caRoot[pkey]}"
+				backup "${user[pkey]}"
 				pkey=
 			else
-				pkey="${caRoot[pkey]}"
+				pkey="${user[pkey]}"
 			fi
 		else
 			pkey=
 		fi
 
 		if [[ ! $pkey ]]; then
-			if result=$(echo -n "${caRoot[passwd]}" |
+			if result=$(echo -n "${user[passwd]}" |
 					openssl genpkey \
 						-algorithm RSA \
 						-pkeyopt rsa_keygen_bits:8192 \
 						-aes-256-cbc \
-						-out "${caRoot[pkey]}" \
+						-out "${user[pkey]}" \
 						-pass stdin 2>&1); then
-				chmod 0400 "${caRoot[pkey]}"
+				chmod 0400 "${user[pkey]}"
 			else
 				echo -e "\033[37;1mCreating private key failed:\033[m" >&2
 				echo -e "  \033[31m$result\033[m" >&2
@@ -266,17 +268,17 @@ do
 
 		### Create Self-signed CA/root certificate
 
-		if result=$(echo -n "${caRoot[passwd]}" |
+		if result=$(echo -n "${ca[passwd]}" |
 				openssl req \
 					-new \
 					-x509 -extensions v3_ca -sha512 -days 9125 \
 					-config "${ssldir}/openssl.cnf" \
 					-utf8 \
-					-out "${ssldir}/${caRoot[dir]}/certs/${caRoot[name]}.crt" \
-					-key "${caRoot[pkey]}" \
-					-subj "${caRoot[subject]}" \
+					-out "${ssldir}/${user[dir]}/certs/${user[name]}.crt" \
+					-key "${ca[pkey]}" \
+					-subj "${user[subject]}" \
 					-passin stdin 2>&1); then
-			chmod 0600 "${ssldir}/${caRoot[dir]}/certs/${caRoot[name]}.crt"
+			chmod 0600 "${ssldir}/${user[dir]}/certs/${user[name]}.crt"
 		else
 			echo -e "\033[37;1mCreating self-signed certificate for root CA failed:\033[m" >&2
 			echo -e "  \033[31m$result\033[m" >&2
@@ -284,34 +286,34 @@ do
 		fi
 	elif [[ ca-intermediate == ${user[name]} ]]; then
 
-		if ! [ -f "${ssldir}/${caRoot[dir]}/certs/${caRoot[name]}.crt" ]; then
+		if ! [ -f "${ssldir}/${ca[dir]}/certs/${ca[name]}.crt" ]; then
 			echo -e "\033[37;1mChecking for CA certificate:\033[m"
-			echo -e "  \033[31m${caRoot[name]} certificate not found.\033[m" >&2
+			echo -e "  \033[31m${ca[name]} certificate not found.\033[m" >&2
 			exit 3
 		fi
 
 		### Create CA/intermediate private key, if not found or explicitly requested
 
-		if [[ -f "${caIntermediate[pkey]}" ]]; then
+		if [[ -f "${user[pkey]}" ]]; then
 			if inArray genpkey ca-intermediate; then
-				backup "${caIntermediate[pkey]}"
+				backup "${user[pkey]}"
 				pkey=
 			else
-				pkey="${caIntermediate[pkey]}"
+				pkey="${user[pkey]}"
 			fi
 		else
 			pkey=
 		fi
 
 		if [[ ! $pkey ]]; then
-			if result=$(echo -n "${caIntermediate[passwd]}" |
+			if result=$(echo -n "${user[passwd]}" |
 					openssl genpkey \
 						-algorithm RSA \
 						-pkeyopt rsa_keygen_bits:8192 \
 						-aes-256-cbc \
-						-out "${caIntermediate[pkey]}" \
+						-out "${user[pkey]}" \
 						-pass stdin 2>&1); then
-				chmod 0400 "${caIntermediate[pkey]}"
+				chmod 0400 "${user[pkey]}"
 			else
 				echo -e "\033[37;1mCreating private key failed:\033[m" >&2
 				echo -e "  \033[31m$result\033[m" >&2
@@ -321,14 +323,14 @@ do
 
 		### Create CSR for CA/intermediate to be signed by CA/root
 
-		if ! result=$(echo -n "${caIntermediate[passwd]}" |
+		if ! result=$(echo -n "${user[passwd]}" |
 				openssl req \
 					-new \
 					-utf8 \
 					-config ${ssldir}/openssl.cnf \
-					-out "${ssldir}/${caRoot[dir]}/csr/${caIntermediate[name]}.csr" \
-					-key "${caIntermediate[pkey]}" \
-					-subj "${caIntermediate[subject]}" \
+					-out "${ssldir}/${ca[dir]}/csr/${user[name]}.csr" \
+					-key "${user[pkey]}" \
+					-subj "${user[subject]}" \
 					-passin stdin 2>&1); then
 			echo -e "\033[37;1mCreating CSR for intermediate CA failed:\033[m" >&2
 			echo -e "  \033[31m$result\033[m" >&2
@@ -337,7 +339,7 @@ do
 
 		### Create CA/intermediate certificate from CSR
 
-		if result=$(echo -n "${caRoot[passwd]}" |
+		if result=$(echo -n "${ca[passwd]}" |
 				openssl ca \
 					-config "${ssldir}/openssl.cnf" \
 					-name CA_root \
@@ -345,11 +347,11 @@ do
 					-notext \
 					-batch \
 					-passin stdin \
-					-cert "${ssldir}/${caRoot[dir]}/certs/${caRoot[name]}.crt" \
-					-keyfile "${caRoot[pkey]}" \
-					-out "${ssldir}/${caIntermediate[dir]}/certs/${caIntermediate[name]}.crt" \
-					-infiles "${ssldir}/${caRoot[dir]}/csr/${caIntermediate[name]}.csr" 2>&1); then
-			chmod 0600 "${ssldir}/${caIntermediate[dir]}/certs/${caIntermediate[name]}.crt"
+					-cert "${ssldir}/${ca[dir]}/certs/${ca[name]}.crt" \
+					-keyfile "${ca[pkey]}" \
+					-out "${ssldir}/${user[dir]}/certs/${user[name]}.crt" \
+					-infiles "${ssldir}/${ca[dir]}/csr/${user[name]}.csr" 2>&1); then
+			chmod 0600 "${ssldir}/${user[dir]}/certs/${user[name]}.crt"
 		else
 			echo -e "\033[37;1mCreating Certificate from CSR failed:\033[m" >&2
 			echo -e "  \033[31m$result\033[m" >&2
@@ -358,31 +360,31 @@ do
 
 		# Check certificate against CA cert
 		if ! result=$(openssl verify -partial_chain \
-					-CAfile "${ssldir}/${caRoot[dir]}/certs/${caRoot[name]}.crt" \
-					"${ssldir}/${caIntermediate[dir]}/certs/${caIntermediate[name]}.crt" 2>&1); then
+					-CAfile "${ssldir}/${ca[dir]}/certs/${ca[name]}.crt" \
+					"${ssldir}/${user[dir]}/certs/${user[name]}.crt" 2>&1); then
 			echo -e "\033[37;1mCreating certificate chain failed:\033[m" >&2
 			echo -e "  \033[31m$result\033[m" >&2
 			exit 13
 		fi
 
 		# Create revocation list
-		if ! result=$(echo -n "${caRoot[passwd]}" |
+		if ! result=$(echo -n "${ca[passwd]}" |
 				openssl ca \
 					-gencrl \
 					-config "${ssldir}/openssl.cnf" \
 					-name CA_root \
-					-cert "${ssldir}/${caRoot[dir]}/certs/${caRoot[name]}.crt" \
-					-keyfile "${ssldir}/${caRoot[dir]}/private/${caRoot[name]}.key" \
-					-out "${ssldir}/${caRoot[dir]}/revoked/${caRoot[name]}.crl" \
+					-cert "${ssldir}/${ca[dir]}/certs/${ca[name]}.crt" \
+					-keyfile "${ssldir}/${ca[dir]}/private/${ca[name]}.key" \
+					-out "${ssldir}/${ca[dir]}/revoked/${ca[name]}.crl" \
 					-passin stdin 2>&1); then
 			echo -e "\033[37;1mCreating CRL failed:\033[m" >&2
 			echo -e "  \033[31m$result\033[m" >&2
 			exit 14
 		fi
 	else
-		if ! [ -f "${ssldir}/${caIntermediate[dir]}/certs/${caIntermediate[name]}.crt" ]; then
+		if ! [ -f "${ssldir}/${ca[dir]}/certs/${ca[name]}.crt" ]; then
 			echo -e "\033[37;1mChecking for CA certificate:\033[m"
-			echo -e "  \033[31m${caIntermediate[name]} certificate not found.\033[m" >&2
+			echo -e "  \033[31m${ca[name]} certificate not found.\033[m" >&2
 			exit 3
 		fi
 
@@ -425,7 +427,7 @@ do
 					-new \
 					-utf8 \
 					-config ${ssldir}/openssl.cnf \
-					-out "${ssldir}/${caIntermediate[dir]}/csr/${user[name]}.csr" \
+					-out "${ssldir}/${ca[dir]}/csr/${user[name]}.csr" \
 					-key "${user[pkey]}" \
 					-subj "${user[subject]}" \
 					-passin stdin 2>&1); then
@@ -436,7 +438,7 @@ do
 
 		### Create user certificate from CSR
 
-		if result=$(echo -n "${caIntermediate[passwd]}" |
+		if result=$(echo -n "${ca[passwd]}" |
 				openssl ca \
 					-config "${ssldir}/openssl.cnf" \
 					-name CA_default \
@@ -444,10 +446,10 @@ do
 					-notext \
 					-batch \
 					-passin stdin \
-					-cert "${ssldir}/${caIntermediate[dir]}/certs/${caIntermediate[name]}.crt" \
-					-keyfile "${caIntermediate[pkey]}" \
+					-cert "${ssldir}/${ca[dir]}/certs/${ca[name]}.crt" \
+					-keyfile "${ca[pkey]}" \
 					-out "${ssldir}/${user[dir]}/certs/${user[name]}.crt" \
-					-infiles "${ssldir}/${caIntermediate[dir]}/csr/${user[name]}.csr" 2>&1); then
+					-infiles "${ssldir}/${ca[dir]}/csr/${user[name]}.csr" 2>&1); then
 			chmod 0600 "${ssldir}/${user[dir]}/certs/${user[name]}.crt"
 		else
 			echo -e "\033[37;1mCreating Certificate from CSR failed:\033[m" >&2
@@ -457,7 +459,7 @@ do
 
 		# Check certificate against CA cert
 		if ! result=$(openssl verify -partial_chain \
-					-CAfile "${ssldir}/${caIntermediate[dir]}/certs/${caIntermediate[name]}.crt" \
+					-CAfile "${ssldir}/${ca[dir]}/certs/${ca[name]}.crt" \
 					"${ssldir}/${user[dir]}/certs/${user[name]}.crt" 2>&1); then
 			echo -e "\033[37;1mCreating certificate chain failed:\033[m" >&2
 			echo -e "  \033[31m$result\033[m" >&2
@@ -465,14 +467,14 @@ do
 		fi
 
 		# Create revocation list
-		if ! result=$(echo "${caIntermediate[passwd]}" |
+		if ! result=$(echo "${ca[passwd]}" |
 				openssl ca \
 					-gencrl \
 					-config "${ssldir}/openssl.cnf" \
 					-name CA_default \
-					-cert "${ssldir}/${caIntermediate[dir]}/certs/${caIntermediate[name]}.crt" \
-					-keyfile "${ssldir}/${caIntermediate[dir]}/private/${caIntermediate[name]}.key" \
-					-out "${ssldir}/${caIntermediate[dir]}/revoked/${caIntermediate[name]}.crl" \
+					-cert "${ssldir}/${ca[dir]}/certs/${ca[name]}.crt" \
+					-keyfile "${ssldir}/${ca[dir]}/private/${ca[name]}.key" \
+					-out "${ssldir}/${ca[dir]}/revoked/${ca[name]}.crl" \
 					-passin stdin 2>&1); then
 			echo -e "\033[37;1mCreating CRL failed:\033[m" >&2
 			echo -e "  \033[31m$result\033[m" >&2
@@ -481,7 +483,7 @@ do
 
 		# Supply the chain of intermediate(s) with the certificate
 		cat "${ssldir}/${user[dir]}/certs/${user[name]}.crt" \
-			"${ssldir}/${caIntermediate[dir]}/certs/${caIntermediate[name]}.crt" \
+			"${ssldir}/${ca[dir]}/certs/${ca[name]}.crt" \
 			> "${ssldir}/${user[dir]}/certs/${user[name]}-chain.crt"
 
 		chmod 0644 "${ssldir}/${user[dir]}/certs/${user[name]}-chain.crt"
@@ -516,6 +518,7 @@ EOF
 				echo 1 | "%~dp0\..\bin\certmgr.exe" -del -c -n "$name" -s root
 				if errorlevel 0 goto root
 EOF
+			root=
 		fi
 
 		if [[ $intermediate ]]; then
@@ -542,9 +545,7 @@ EOF
 				echo 1 | "%~dp0\..\bin\certmgr.exe" -del -c -n "$name" -s ca
 				if errorlevel 0 goto intermediate
 EOF
+			intermediate=
 		fi
 	fi
-
-	root=
-	intermediate=
 done
