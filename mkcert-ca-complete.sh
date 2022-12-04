@@ -3,8 +3,6 @@
 this=$(realpath "${BASH_SOURCE[0]}")
 scriptdir=$(dirname "$this")
 
-intermediate=
-root=
 prefix=.
 separator=,
 genpkey=()
@@ -85,16 +83,6 @@ do
 	fi
 done
 
-if inArray genpkey ca-root ||
-   inArray args    ca-root; then
-	root=true
-fi
-
-if inArray genpkey ca-intermediate ||
-   inArray args    ca-intermediate; then
-	intermediate=true
-fi
-
 set -- "${args[@]}"
 
 if [ -z "$config" ]; then
@@ -161,9 +149,6 @@ fromJson()
 	jq -er '.[] | select(.name=="'"$name"'") | to_entries[] |
 		"[" + .key + "]=" + @sh "\(.value)"' "$config"
 }
-
-declare -A "caRoot=($(fromJson ca-root))"
-declare -A "caIntermediate=($(fromJson ca-intermediate))"
 
 cd "$scriptdir"
 
