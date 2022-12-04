@@ -19,7 +19,14 @@ inArray()
 usage()
 {
 	cat <<EOF
-$0 name [name [name ...]]
+$0 [options] name [name [name ...]]
+
+  name    Certificate name from JSON config.
+
+          If CAs are being specified, certificates must be in order from
+          root to user certificate(s).
+
+  options
 
   -c --config=
      --genpkey=ca-root,ca-intermediate,name
@@ -29,6 +36,7 @@ $0 name [name [name ...]]
      --separator=,
      --ssldir=
   -v --verbose
+
 EOF
 
 	exit 0
