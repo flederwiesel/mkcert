@@ -491,63 +491,36 @@ do
 		chmod 0644 "${user[cert]%.crt}-chain.crt"
 	fi
 
-	### Create scripts for adding/removing certificates to/from store
+	### Create scripts for adding/removing certificates to/from Windows trust store
 
-	if [[ $root || $intermediate ]]; then
+	if [[ ${user[ca]} ]]; then
 		mkdir -p tmp
 
-		if [[ $root ]]; then
-			d="caRoot[dir]"
-			n="caRoot[name]"
-			s="caRoot[subject]"
-			# Build DOS path to certificate
-			path="%~dp0\\..\\${ssldir//\//\\}\\${!d//\//\\}\\certs\\${!n}.crt"
-			name=$(sed -r 's#.*/CN=(([^/]|\\/)+).*#\1#g' <<<"${!s}")
+		# Build DOS path to certificate
+		path="${user[cert]}"
+		path="%~dp0\\..\\${path//\//\\}"
 
-			sed 's/$/\r/g' <<-EOF > "tmp/certmgr-add-${caRoot[name]}.bat"
-				:: Order of arguments is important here - certmgr.exe is not that flexible...
-				"%~dp0\\..\\bin\\certmgr.exe" -add -c "$path" -s root
-EOF
-
-			sed 's/$/\r/g' <<-EOF > "tmp/certmgr-rm-${caRoot[name]}.bat"
-				:: This script is intended for debugging only!
-				:: Do not use this script in a production environment, as it
-				:: may leave your security (trust) settings misconfigured.
-				:: You have been warned!
-				chcp 65001
-				:root
-				:: Enter cert # from the above list to delete-->
-				echo 1 | "%~dp0\..\bin\certmgr.exe" -del -c -n "$name" -s root
-				if errorlevel 0 goto root
-EOF
-			root=
+		if [[ root == ${user[ca]} ]]; then
+			store=root
+		else
+			store=ca
 		fi
 
-		if [[ $intermediate ]]; then
-			d="caIntermediate[dir]"
-			n="caIntermediate[name]"
-			s="caIntermediate[subject]"
-			# Build DOS path to certificate
-			path="%~dp0\\..\\${ssldir//\//\\}\\${!d//\//\\}\\certs\\${!n}.crt"
-			name=$(sed -r 's#.*/CN=(([^/]|\\/)+).*#\1#g' <<<"${!s}")
-
-			sed 's/$/\r/g' <<-EOF > "tmp/certmgr-add-${caIntermediate[name]}.bat"
-				:: Order of arguments is important here - certmgr.exe is not that flexible...
-				"%~dp0\\..\\bin\\certmgr.exe" -add -c "$path" -s ca
+		sed 's/$/\r/g' <<-EOF > "tmp/certmgr-add-${user[name]}.bat"
+			:: Order of arguments is important here - certmgr.exe is not that flexible...
+			"%~dp0\\..\\bin\\certmgr.exe" -add -c "$path" -s $store
 EOF
 
-			sed 's/$/\r/g' <<-EOF >> "tmp/certmgr-rm-${caIntermediate[name]}.bat"
-				:: This script is intended for debugging only!
-				:: Do not use this script in a production environment, as it
-				:: may leave your security (trust) settings misconfigured.
-				:: You have been warned!
-				chcp 65001
-				:intermediate
-				:: Enter cert # from the above list to delete-->
-				echo 1 | "%~dp0\..\bin\certmgr.exe" -del -c -n "$name" -s ca
-				if errorlevel 0 goto intermediate
+		sed 's/$/\r/g' <<-EOF > "tmp/certmgr-rm-${user[name]}.bat"
+			:: This script is intended for debugging only!
+			:: Do not use this script in a production environment, as it
+			:: may leave your security (trust) settings misconfigured.
+			:: You have been warned!
+			chcp 65001
+			:root
+			:: Enter cert # from the above list to delete-->
+			echo 1 | "%~dp0\..\bin\certmgr.exe" -del -c -n "$name" -s root
+			if errorlevel 0 goto root
 EOF
-			intermediate=
-		fi
 	fi
 done
