@@ -121,7 +121,11 @@ if [[ $verbose ]]; then
 
 	exec 3<&1
 
-	openssl() {
+	openssl()
+	{
+		# Don't trace within this function
+		[[ $- == ${-//x/} ]] || set +x
+
 		local arg
 		local args
 
@@ -131,6 +135,8 @@ if [[ $verbose ]]; then
 		done
 
 		echo -e "${yellow}$openssl ${args[@]}${none}" >&3
+
+		[[ $- == ${-//x/} ]] || set -x
 
 		"$openssl" "$@"
 	}
