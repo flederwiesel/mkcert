@@ -165,46 +165,9 @@ fromJson()
 declare -A "caRoot=($(fromJson ca-root))"
 declare -A "caIntermediate=($(fromJson ca-intermediate))"
 
-### Populate folder structure
-
 cd "$scriptdir"
 
 mkdir -p "${ssldir}"
-
-# Create config from template
-#envsubst < "$scriptdir/openssl.cnf.template" > "$scriptdir/openssl.cnf"
-sed "s:%{ssldir}:${ssldir}:g
-s*%{distcrlRoot}*${caRoot[distcrl]}*g
-s*%{distcrlIntm}*${caIntermediate[distcrl]}*g
-${user[altnames]:+s/\[usr_cert\]/&\nsubjectAltName = @alt_names/g}
-${user[altnames]:+\$ a \\\n[alt_names]\n${user[altnames]//:/\\n}}
-" "${scriptdir}/openssl.cnf.template" > "${ssldir}/openssl.cnf"
-
-for issuer in ${root:+"${caRoot[dir]}"} ${intermediate:+"${caIntermediate[dir]}"}
-do
-	for dir in certs csr database newcerts private revoked
-	do
-		mkdir -p -m 0700 "${ssldir}/${issuer}/$dir"
-	done
-
-	touch "${ssldir}/${issuer}/database/index.txt"
-
-	[ -f "${ssldir}/${issuer}/database/index.txt.attr" ] ||
-	{
-		echo 'unique_subject = no' > "${ssldir}/${issuer}/database/index.txt.attr"
-		chmod 0600 "${ssldir}/${issuer}/database/index.txt.attr"
-	}
-	[ -f "${ssldir}/${issuer}/database/serial" ] ||
-	{
-		echo '1000' > "${ssldir}/${issuer}/database/serial"
-		chmod 0600 "${ssldir}/${issuer}/database/serial"
-	}
-	[ -f "${ssldir}/${issuer}/revoked/crlnumber" ] ||
-	{
-		echo '1000' > "${ssldir}/${issuer}/revoked/crlnumber"
-		chmod 0600 "${ssldir}/${issuer}/revoked/crlnumber"
-	}
-done
 
 for name
 do
@@ -239,6 +202,40 @@ do
 	user[pkey]="${ssldir}/${user[dir]}/private/${user[name]}.key"
 	user[csr]="${ssldir}/${ca[dir]}/csr/${user[name]}.csr"
 	user[cert]="${ssldir}/${user[dir]}/certs/${user[name]}.crt"
+
+	# Create config from template
+	sed "s:%{ssldir}:${ssldir}:g
+		s*%{distcrl}*${ca[distcrl]}*g
+		${user[altnames]:+s/\[usr_cert\]/&\nsubjectAltName = @alt_names/g}
+		${user[altnames]:+\$ a \\\n[alt_names]\n${user[altnames]//:/\\n}}
+	" "${scriptdir}/openssl.cnf.template" > "${ssldir}/openssl.cnf"
+
+	# Populate folder structure
+	for dir in csr database newcerts revoked
+	do
+		mkdir -p -m 0700 "${ssldir}/${ca[dir]}/$dir"
+	done
+
+	touch "${ssldir}/${ca[dir]}/database/index.txt"
+
+	[ -f "${ssldir}/${ca[dir]}/database/index.txt.attr" ] ||
+	{
+		echo 'unique_subject = no' > "${ssldir}/${ca[dir]}/database/index.txt.attr"
+		chmod 0600 "${ssldir}/${ca[dir]}/database/index.txt.attr"
+	}
+	[ -f "${ssldir}/${ca[dir]}/database/serial" ] ||
+	{
+		echo '1000' > "${ssldir}/${ca[dir]}/database/serial"
+		chmod 0600 "${ssldir}/${ca[dir]}/database/serial"
+	}
+	[ -f "${ssldir}/${ca[name]}/revoked/crlnumber" ] ||
+	{
+		echo '1000' > "${ssldir}/${ca[dir]}/revoked/crlnumber"
+		chmod 0600 "${ssldir}/${ca[dir]}/revoked/crlnumber"
+	}
+
+	mkdir -p -m 0700 "${ssldir}/${user[dir]}/certs"
+	mkdir -p -m 0700 "${ssldir}/${user[dir]}/private"
 
 	if [[ ca-root == ${user[name]} ]]; then
 

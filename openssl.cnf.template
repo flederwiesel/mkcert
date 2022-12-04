@@ -80,7 +80,7 @@ authorityKeyIdentifier = keyid:always,issuer
 basicConstraints       = CA:true
 keyUsage               = digitalSignature, cRLSign, keyCertSign
 nsCertType             = sslCA, emailCA, objCA
-crlDistributionPoints  = %{distcrlRoot}
+crlDistributionPoints  = %{distcrl}
 
 [v3_intermediate_ca]
 # Extensions for a typical issuing (next to end user) CA (`man x509v3_config`).
@@ -94,7 +94,7 @@ authorityKeyIdentifier = keyid:always,issuer
 basicConstraints       = CA:true, pathlen:0
 keyUsage               = digitalSignature, cRLSign, keyCertSign
 nsCertType             = sslCA, emailCA, objCA
-crlDistributionPoints  = %{distcrlRoot}
+crlDistributionPoints  = %{distcrl}
 
 [usr_cert]
 # Extensions for client certificates (`man x509v3_config`).
@@ -105,7 +105,7 @@ authorityKeyIdentifier = keyid:always, issuer:always
 keyUsage               = nonRepudiation, digitalSignature, keyEncipherment
 extendedKeyUsage       = serverAuth, clientAuth, emailProtection, codeSigning, msEFS
 nsCertType             = server, client, email, objsign
-crlDistributionPoints  = %{distcrlIntm}
+crlDistributionPoints  = %{distcrl}
 
 [req]
 default_md         = sha256
