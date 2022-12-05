@@ -230,36 +230,50 @@ do
 	mkdir -p -m 0700 "${ssldir}/${user[dir]}/certs"
 	mkdir -p -m 0700 "${ssldir}/${user[dir]}/private"
 
-	if [[ ca-root == ${user[name]} ]]; then
+	# For intermediate CAs and user certificates we need an issuing CA cert
+	if [[ ${user[ca]} != root ]]; then
+		if ! [ -f "${ca[cert]}" ]; then
+			echo -e "\033[37;1mChecking for CA certificate:\033[m"
+			echo -e "  \033[31m${ca[name]} certificate not found.\033[m" >&2
+			exit 3
+		fi
+	fi
 
-		### Create CA/root private key, if not found or explicitly requested
-
-		if [[ -f "${user[pkey]}" ]]; then
-			if inArray genpkey "${user[name]}"; then
-				backup "${user[pkey]}"
-				pkey=
-			else
-				pkey="${user[pkey]}"
-			fi
-		else
+	# Create private key, if not found or explicitly requested
+	if [[ -f "${user[pkey]}" ]]; then
+		if inArray genpkey "${user[name]}"; then
+			backup "${user[pkey]}"
 			pkey=
+		else
+			pkey="${user[pkey]}"
 		fi
+	else
+		pkey=
+	fi
 
-		if [[ ! $pkey ]]; then
-			if result=$(echo -n "${user[passwd]}" |
-					openssl genpkey \
-						-algorithm RSA \
-						-pkeyopt rsa_keygen_bits:8192 \
-						-aes-256-cbc \
-						-out "${user[pkey]}" \
-						-pass stdin 2>&1); then
-				chmod 0400 "${user[pkey]}"
-			else
-				echo -e "\033[37;1mCreating private key failed:\033[m" >&2
-				echo -e "  \033[31m$result\033[m" >&2
-				exit 10
-			fi
+	if [[ ${user[ca]} ]]; then
+		bits=8192
+	else
+		bits=4096
+	fi
+
+	if [[ ! $pkey ]]; then
+		if result=$(echo -n "${user[passwd]}" |
+				openssl genpkey \
+					-algorithm RSA \
+					-pkeyopt rsa_keygen_bits:$bits \
+					-aes-256-cbc \
+					-out "${user[pkey]}" \
+					-pass stdin 2>&1); then
+			chmod 0400 "${user[pkey]}"
+		else
+			echo -e "\033[37;1mCreating private key failed:\033[m" >&2
+			echo -e "  \033[31m$result\033[m" >&2
+			exit 10
 		fi
+	fi
+
+	if [[ ca-root == ${user[name]} ]]; then
 
 		### Create Self-signed CA/root certificate
 
@@ -280,41 +294,6 @@ do
 			exit 12
 		fi
 	elif [[ ca-intermediate == ${user[name]} ]]; then
-
-		if ! [ -f "${ca[cert]}" ]; then
-			echo -e "\033[37;1mChecking for CA certificate:\033[m"
-			echo -e "  \033[31m${ca[name]} certificate not found.\033[m" >&2
-			exit 3
-		fi
-
-		### Create CA/intermediate private key, if not found or explicitly requested
-
-		if [[ -f "${user[pkey]}" ]]; then
-			if inArray genpkey "${user[name]}"; then
-				backup "${user[pkey]}"
-				pkey=
-			else
-				pkey="${user[pkey]}"
-			fi
-		else
-			pkey=
-		fi
-
-		if [[ ! $pkey ]]; then
-			if result=$(echo -n "${user[passwd]}" |
-					openssl genpkey \
-						-algorithm RSA \
-						-pkeyopt rsa_keygen_bits:8192 \
-						-aes-256-cbc \
-						-out "${user[pkey]}" \
-						-pass stdin 2>&1); then
-				chmod 0400 "${user[pkey]}"
-			else
-				echo -e "\033[37;1mCreating private key failed:\033[m" >&2
-				echo -e "  \033[31m$result\033[m" >&2
-				exit 10
-			fi
-		fi
 
 		### Create CSR for CA/intermediate to be signed by CA/root
 
@@ -377,43 +356,6 @@ do
 			exit 14
 		fi
 	else
-		if ! [ -f "${ca[cert]}" ]; then
-			echo -e "\033[37;1mChecking for CA certificate:\033[m"
-			echo -e "  \033[31m${ca[name]} certificate not found.\033[m" >&2
-			exit 3
-		fi
-
-		mkdir -p -m 0700 "${ssldir}/${user[dir]}/certs"
-		mkdir -p -m 0700 "${ssldir}/${user[dir]}/private"
-
-		### Create user private key, if not found or explicitly requested
-
-		if [[ -f "${user[pkey]}" ]]; then
-			if inArray genpkey "${user[name]}"; then
-				backup "${user[pkey]}"
-				pkey=
-			else
-				pkey="${user[pkey]}"
-			fi
-		else
-			pkey=
-		fi
-
-		if [[ ! $pkey ]]; then
-			if result=$(echo -n "${user[passwd]}" |
-				openssl genpkey \
-					-algorithm RSA \
-					-pkeyopt rsa_keygen_bits:4096 \
-					-aes-256-cbc \
-					-out "${user[pkey]}" \
-					-pass stdin 2>&1); then
-				chmod 0400 "${user[pkey]}"
-			else
-				echo -e "\033[37;1mCreating private key failed:\033[m" >&2
-				echo -e "  \033[31m$result\033[m" >&2
-				exit 10
-			fi
-		fi
 
 		### Create CSR for user to be signed by CA/intermediate
 
