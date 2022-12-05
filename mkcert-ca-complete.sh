@@ -364,12 +364,13 @@ do
 		fi
 	fi
 
+	if [[ intermediate == ${ca[ca]} ]]; then
+		chain=("${ca[cert]}" "${chain[@]}")
+	fi
+
 	if [[ ! ${user[ca]} ]]; then
 		# Supply the chain of intermediate(s) with the certificate
-		cat "${user[cert]}" \
-			"${ca[cert]}" \
-			> "${user[cert]%.crt}-chain.crt"
-
+		cat "${user[cert]}" "${chain[@]}" > "${user[cert]%.crt}-chain.crt"
 		chmod 0644 "${user[cert]%.crt}-chain.crt"
 	fi
 
