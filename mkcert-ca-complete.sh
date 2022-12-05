@@ -235,7 +235,7 @@ do
 		### Create CA/root private key, if not found or explicitly requested
 
 		if [[ -f "${user[pkey]}" ]]; then
-			if inArray genpkey ca-root; then
+			if inArray genpkey "${user[name]}"; then
 				backup "${user[pkey]}"
 				pkey=
 			else
@@ -290,7 +290,7 @@ do
 		### Create CA/intermediate private key, if not found or explicitly requested
 
 		if [[ -f "${user[pkey]}" ]]; then
-			if inArray genpkey ca-intermediate; then
+			if inArray genpkey "${user[name]}"; then
 				backup "${user[pkey]}"
 				pkey=
 			else
