@@ -198,6 +198,7 @@ do
 
 	# Create config from template
 	sed "s:%{ssldir}:${ssldir}:g
+		s:%{ca_dir}:${ca[dir]}:g
 		s*%{distcrl}*${ca[distcrl]}*g
 		${user[altnames]:+s/\[usr_cert\]/&\nsubjectAltName = @alt_names/g}
 		${user[altnames]:+\$ a \\\n[alt_names]\n${user[altnames]//:/\\n}}
