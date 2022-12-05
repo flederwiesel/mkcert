@@ -462,7 +462,7 @@ do
 		fi
 
 		# Create revocation list
-		if ! result=$(echo "${ca[passwd]}" |
+		if ! result=$(echo -n "${ca[passwd]}" |
 				openssl ca \
 					-gencrl \
 					-config "${ssldir}/openssl.cnf" \
