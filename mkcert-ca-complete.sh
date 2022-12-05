@@ -273,10 +273,8 @@ do
 		fi
 	fi
 
-	if [[ ca-root == ${user[name]} ]]; then
-
-		### Create Self-signed CA/root certificate
-
+	if [[ root == ${user[ca]} ]]; then
+		# Create Self-signed CA/root certificate
 		if result=$(echo -n "${ca[passwd]}" |
 				openssl req \
 					-new \
@@ -289,76 +287,12 @@ do
 					-passin stdin 2>&1); then
 			chmod 0600 "${ca[cert]}"
 		else
-			echo -e "\033[37;1mCreating self-signed certificate for root CA failed:\033[m" >&2
+			echo -e "\033[37;1mCreating self-signed certificate for '${user[name]}' failed:\033[m" >&2
 			echo -e "  \033[31m$result\033[m" >&2
 			exit 12
-		fi
-	elif [[ ca-intermediate == ${user[name]} ]]; then
-
-		### Create CSR for CA/intermediate to be signed by CA/root
-
-		if ! result=$(echo -n "${user[passwd]}" |
-				openssl req \
-					-new \
-					-utf8 \
-					-config ${ssldir}/openssl.cnf \
-					-out "${user[csr]}" \
-					-key "${user[pkey]}" \
-					-subj "${user[subject]}" \
-					-passin stdin 2>&1); then
-			echo -e "\033[37;1mCreating CSR for intermediate CA failed:\033[m" >&2
-			echo -e "  \033[31m$result\033[m" >&2
-			exit 11
-		fi
-
-		### Create CA/intermediate certificate from CSR
-
-		if result=$(echo -n "${ca[passwd]}" |
-				openssl ca \
-					-config "${ssldir}/openssl.cnf" \
-					-name CA_root \
-					-extensions v3_intermediate_ca \
-					-notext \
-					-batch \
-					-passin stdin \
-					-cert "${ca[cert]}" \
-					-keyfile "${ca[pkey]}" \
-					-out "${user[cert]}" \
-					-infiles "${user[csr]}" 2>&1); then
-			chmod 0600 "${user[cert]}"
-		else
-			echo -e "\033[37;1mCreating Certificate from CSR failed:\033[m" >&2
-			echo -e "  \033[31m$result\033[m" >&2
-			exit 12
-		fi
-
-		# Check certificate against CA cert
-		if ! result=$(openssl verify -partial_chain \
-					-CAfile "${ca[cert]}" \
-					"${user[cert]}" 2>&1); then
-			echo -e "\033[37;1mCreating certificate chain failed:\033[m" >&2
-			echo -e "  \033[31m$result\033[m" >&2
-			exit 13
-		fi
-
-		# Create revocation list
-		if ! result=$(echo -n "${ca[passwd]}" |
-				openssl ca \
-					-gencrl \
-					-config "${ssldir}/openssl.cnf" \
-					-name CA_root \
-					-cert "${ca[cert]}" \
-					-keyfile "${ca[pkey]}" \
-					-out "${ca[crl]}" \
-					-passin stdin 2>&1); then
-			echo -e "\033[37;1mCreating CRL failed:\033[m" >&2
-			echo -e "  \033[31m$result\033[m" >&2
-			exit 14
 		fi
 	else
-
-		### Create CSR for user to be signed by CA/intermediate
-
+		# Create CSR to be signed by CA
 		if ! result=$(echo -n "${user[passwd]}" |
 				openssl req \
 					-new \
@@ -368,18 +302,29 @@ do
 					-key "${user[pkey]}" \
 					-subj "${user[subject]}" \
 					-passin stdin 2>&1); then
-			echo -e "\033[37;1mCreating CSR for user failed:\033[m" >&2
+			echo -e "\033[37;1mCreating CSR for '${user[name]}' failed:\033[m" >&2
 			echo -e "  \033[31m$result\033[m" >&2
 			exit 11
 		fi
 
-		### Create user certificate from CSR
+		# Create certificate from CSR
+		if [[ root == ${ca[ca]} ]]; then
+			section=CA_root
+		else
+			section=CA_default
+		fi
+
+		if [[ ${user[ca]} ]]; then
+			extensions=v3_intermediate_ca
+		else
+			extensions=usr_cert
+		fi
 
 		if result=$(echo -n "${ca[passwd]}" |
 				openssl ca \
 					-config "${ssldir}/openssl.cnf" \
-					-name CA_default \
-					-extensions usr_cert \
+					-name "$section" \
+					-extensions "$extensions" \
 					-notext \
 					-batch \
 					-passin stdin \
@@ -408,7 +353,7 @@ do
 				openssl ca \
 					-gencrl \
 					-config "${ssldir}/openssl.cnf" \
-					-name CA_default \
+					-name "$section" \
 					-cert "${ca[cert]}" \
 					-keyfile "${ca[pkey]}" \
 					-out "${ca[crl]}" \
@@ -417,7 +362,9 @@ do
 			echo -e "  \033[31m$result\033[m" >&2
 			exit 14
 		fi
+	fi
 
+	if [[ ! ${user[ca]} ]]; then
 		# Supply the chain of intermediate(s) with the certificate
 		cat "${user[cert]}" \
 			"${ca[cert]}" \
@@ -426,7 +373,7 @@ do
 		chmod 0644 "${user[cert]%.crt}-chain.crt"
 	fi
 
-	### Create scripts for adding/removing certificates to/from Windows trust store
+	# Create scripts for adding/removing certificates to/from Windows trust store
 
 	if [[ ${user[ca]} ]]; then
 		mkdir -p tmp
