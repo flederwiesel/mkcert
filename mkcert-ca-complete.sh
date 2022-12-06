@@ -179,7 +179,7 @@ do
 	declare -A "ca=($(fromJson "${user[issuer]}"))"
 
 	if [ -z "${ca[subject]}" ]; then
-		echo "Please specify subject for issuing CA '${ca[name]}'." >&2
+		echo "Please specify subject for issuing CA '${user[issuer]}'." >&2
 		exit 1
 	fi
 
