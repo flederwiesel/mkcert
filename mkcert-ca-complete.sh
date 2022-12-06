@@ -298,7 +298,7 @@ do
 				openssl req \
 					-new \
 					-utf8 \
-					-config ${ssldir}/openssl.cnf \
+					-config "${ssldir}/openssl.cnf" \
 					-out "${user[csr]}" \
 					-key "${user[pkey]}" \
 					-subj "${user[subject]}" \
