@@ -3,7 +3,6 @@
 this=$(realpath "${BASH_SOURCE[0]}")
 scriptdir=$(dirname "$this")
 
-prefix=.
 separator=,
 genpkey=()
 
@@ -32,7 +31,6 @@ $0 [options] name [name [name ...]]
      --genpkey=ca-root,ca-intermediate,name
          Force re-creation of private key for entities separated by --separator
   -h --help
-  -p --prefix=/path/to:etc/ssl
      --separator=,
      --ssldir=
   -v --verbose
@@ -65,12 +63,6 @@ do
 			;;
 		-h|--help)
 			usage
-			;;
-		-p)
-			expect=prefix
-			;;
-		--prefix=*)
-			prefix="${arg:9}"
 			;;
 		--separator=*)
 			separator="${arg:12}"
@@ -148,17 +140,18 @@ backup()
 	done
 }
 
-ssldir="${ssldir:-${prefix}/etc/ssl}"
-ssldir="${ssldir#./}"
-
 fromJson()
 {
 	local name="$1"
-	jq -er '.[] | select(.name=="'"$name"'") | to_entries[] |
+	jq -er '.certs[] | select(.name=="'"$name"'") | to_entries[] |
 		"[" + .key + "]=" + @sh "\(.value)"' "$config"
 }
 
 cd "$scriptdir"
+
+ssldir=${ssldir:-$(jq -er '.ssldir' "$config")}
+ssldir="${ssldir:-etc/ssl}"
+ssldir="${ssldir#./}"
 
 mkdir -p "${ssldir}"
 

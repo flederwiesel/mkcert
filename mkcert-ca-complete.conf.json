@@ -1,36 +1,39 @@
-[
-	{
-		"name": "ca-root",
-		"issuer": "ca-root",
-		"subject" :"/C=??/L=City/O=organisation/CN=ca-root-name",
-		"ca": "root",
-		"dir": "CA/root",
-		"passwd": "~/*'\"'\"'´`\"?!$h|#*",
-		"distcrl": "URI:https://www.example.com/CA/root.crl"
-	},
-	{
-		"name": "ca-intermediate",
-		"issuer": "ca-root",
-		"subject": "/C=??/L=City/O=organisation/OU=unit/CN=ca-intermediate-name",
-		"ca": "intermediate",
-		"dir": "CA/intermediate",
-		"passwd": "'''\"\"\"``$(*)",
-		"distcrl": "URI:https://www.example.com/CA/intermediate.crl"
-	},
-	{
-		"name": "localhost",
-		"issuer": "ca-intermediate",
-		"subject": "/C=??/L=City/O=organisation/OU=unit/CN=localhost",
-		"dir": "",
-		"passwd": "$\"'\u0022\u0027********",
-		"altnames": "IP.1=127.0.0.1:IP.2=192.168.0.1"
-	},
-	{
-		"name": "example.com",
-		"issuer": "ca-intermediate",
-		"subject": "/C=??/L=City/O=organisation/OU=unit/CN=example.com",
-		"dir": "",
-		"passwd": "$\"'\u0022\u0027********",
-		"altnames": "DNS.1=www.example.com:DNS.2=*.example.org:IP.1=192.168.1.1"
-	}
-]
+{
+	"ssldir": "etc/ssl",
+	"certs": [
+		{
+			"name": "ca-root",
+			"issuer": "ca-root",
+			"subject": "/C=??/L=City/O=organisation/CN=ca-root-name",
+			"ca": "root",
+			"dir": "CA/root",
+			"passwd": "~/*'\"'\"'´`\"?!$h|#*",
+			"distcrl": "URI:https://www.example.com/CA/root.crl"
+		},
+		{
+			"name": "ca-intermediate",
+			"issuer": "ca-root",
+			"subject": "/C=??/L=City/O=organisation/OU=unit/CN=ca-intermediate-name",
+			"ca": "intermediate",
+			"dir": "CA/intermediate",
+			"passwd": "'''\"\"\"``$(*)",
+			"distcrl": "URI:https://www.example.com/CA/intermediate.crl"
+		},
+		{
+			"name": "localhost",
+			"issuer": "ca-intermediate",
+			"subject": "/C=??/L=City/O=organisation/OU=unit/CN=localhost",
+			"dir": "",
+			"passwd": "$\"'\u0022\u0027********",
+			"altnames": "IP.1=127.0.0.1:IP.2=192.168.0.1"
+		},
+		{
+			"name": "example.com",
+			"issuer": "ca-intermediate",
+			"subject": "/C=??/L=City/O=organisation/OU=unit/CN=example.com",
+			"dir": "",
+			"passwd": "$\"'\u0022\u0027********",
+			"altnames": "DNS.1=www.example.com:DNS.2=*.example.org:IP.1=192.168.1.1"
+		}
+	]
+}
