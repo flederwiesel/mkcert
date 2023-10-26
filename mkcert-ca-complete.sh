@@ -58,7 +58,7 @@ do
 			;;
 		--genpkey=*)
 			readarray -t -d "${separator}" < <(echo -n "${arg:10}")
-			genpkey+=("${MAPFILE[@]}")
+			genpkey+=("${MAPFILE[@]/%/.enc}")
 			args+=("${MAPFILE[@]}") # Upon key creation, also create (new) cert
 			;;
 		-h|--help)
@@ -234,12 +234,12 @@ do
 	fi
 
 	# Create private key, if not found or explicitly requested
-	if [[ -f "${user[pkey]}" ]]; then
-		if inArray genpkey "${user[name]}"; then
-			backup "${user[pkey]}"
+	if [[ -f "${user[pkey]}.enc" ]]; then
+		if inArray genpkey "${user[name]}.enc"; then
+			backup "${user[pkey]}.enc"
 			pkey=
 		else
-			pkey="${user[pkey]}"
+			pkey="${user[pkey]}.enc"
 		fi
 	else
 		pkey=
@@ -257,9 +257,18 @@ do
 					-algorithm RSA \
 					-pkeyopt rsa_keygen_bits:$bits \
 					-aes-256-cbc \
-					-out "${user[pkey]}" \
-					-pass stdin 2>&1); then
-			chmod 0400 "${user[pkey]}"
+					-out "${user[pkey]}.enc" \
+					-pass stdin 2>&1
+
+				if [[ ! ${user[ca]} ]]; then
+					echo -n "${user[passwd]}" |
+					openssl rsa \
+						-in "${user[pkey]}.enc" \
+						-out "${user[pkey]}" \
+						-passin stdin 2>&1
+				fi
+			); then
+			chmod 0400 "${user[pkey]}"*
 		else
 			echo -e "\033[37;1mCreating private key failed:\033[m" >&2
 			echo -e "  \033[31m$result\033[m" >&2
@@ -276,7 +285,7 @@ do
 					-config "${ssldir}/openssl.cnf" \
 					-utf8 \
 					-out "${user[cert]}" \
-					-key "${ca[pkey]}" \
+					-key "${ca[pkey]}.enc" \
 					-subj "${user[subject]}" \
 					-passin stdin 2>&1); then
 			chmod 0600 "${ca[cert]}"
@@ -293,7 +302,7 @@ do
 					-utf8 \
 					-config "${ssldir}/openssl.cnf" \
 					-out "${user[csr]}" \
-					-key "${user[pkey]}" \
+					-key "${user[pkey]}.enc" \
 					-subj "${user[subject]}" \
 					-passin stdin 2>&1); then
 			echo -e "\033[37;1mCreating CSR for '${user[name]}' failed:\033[m" >&2
@@ -323,7 +332,7 @@ do
 					-batch \
 					-passin stdin \
 					-cert "${ca[cert]}" \
-					-keyfile "${ca[pkey]}" \
+					-keyfile "${ca[pkey]}.enc" \
 					-out "${user[cert]}" \
 					-infiles "${user[csr]}" 2>&1); then
 			chmod 0600 "${user[cert]}"
@@ -349,7 +358,7 @@ do
 					-config "${ssldir}/openssl.cnf" \
 					-name "$section" \
 					-cert "${ca[cert]}" \
-					-keyfile "${ca[pkey]}" \
+					-keyfile "${ca[pkey]}.enc" \
 					-out "${ca[crl]}" \
 					-passin stdin 2>&1); then
 			echo -e "\033[37;1mCreating CRL failed:\033[m" >&2
