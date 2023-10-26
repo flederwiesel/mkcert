@@ -11,13 +11,13 @@ execTest()
 	local config=--config="$scriptdir/mkcert-ca-complete.conf.json"
 	local result
 
-	[[ $RMDIRS =~ etc ]] && rm -rf "$scriptdir/etc"
+	[[ $RMDIRS =~ ssl ]] && rm -rf "$scriptdir/ssl"
 	[[ $RMDIRS =~ tmp ]] && rm -rf "$scriptdir/tmp"
 
 	if [[ $CHMOD ]]; then
 		chmod 600 \
-			"$scriptdir/etc/ssl/CA/"*"/private/"*".key"* \
-			"$scriptdir/etc/ssl/private/"*".key"*
+			"$scriptdir/ssl/CA-root"*"/private/"*".key"* \
+			"$scriptdir/ssl/private/"*".key"*
 	fi
 
 	status=0
@@ -46,12 +46,12 @@ execTest()
 
 # no certificate; nothing to do, no error
 
-RMDIRS=etc,tmp \
+RMDIRS=ssl,tmp \
 execTest $LINENO 0 <<< ""
 
 # try creating user certificate without intermediate cert
 
-RMDIRS=etc,tmp \
+RMDIRS=ssl,tmp \
 execTest $LINENO 3 localhost <<"EOF"
 [37;1mChecking for CA certificate:[m
   [31mca-intermediate certificate not found.[m
@@ -59,7 +59,7 @@ EOF
 
 # try creating intermediate and user certificate without root cert
 
-RMDIRS=etc,tmp \
+RMDIRS=ssl,tmp \
 execTest $LINENO 3 --genpkey=ca-intermediate localhost <<"EOF"
 [37;1mChecking for CA certificate:[m
   [31mca-root certificate not found.[m
@@ -67,86 +67,86 @@ EOF
 
 # create complete chain, no pkeys yet -> will be created automatically
 
-RMDIRS=etc,tmp \
+RMDIRS=ssl,tmp \
 execTest $LINENO 0 ca-root ca-intermediate localhost <<"EOF"
-/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out etc/ssl/CA/root/private/ca-root.key.enc -pass stdin
-/usr/bin/openssl req -new -x509 -extensions v3_ca -sha512 -days 9125 -config etc/ssl/openssl.cnf -utf8 -out etc/ssl/CA/root/certs/ca-root.crt -key etc/ssl/CA/root/private/ca-root.key.enc -subj /C=\?\?/L=City/O=organisation/CN=ca-root-name -passin stdin
-/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out etc/ssl/CA/intermediate/private/ca-intermediate.key.enc -pass stdin
-/usr/bin/openssl req -new -utf8 -config etc/ssl/openssl.cnf -out etc/ssl/CA/root/csr/ca-intermediate.csr -key etc/ssl/CA/intermediate/private/ca-intermediate.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=ca-intermediate-name -passin stdin
-/usr/bin/openssl ca -config etc/ssl/openssl.cnf -name CA_root -extensions v3_intermediate_ca -notext -batch -passin stdin -cert etc/ssl/CA/root/certs/ca-root.crt -keyfile etc/ssl/CA/root/private/ca-root.key.enc -out etc/ssl/CA/intermediate/certs/ca-intermediate.crt -infiles etc/ssl/CA/root/csr/ca-intermediate.csr
-/usr/bin/openssl verify -partial_chain -CAfile etc/ssl/CA/root/certs/ca-root.crt etc/ssl/CA/intermediate/certs/ca-intermediate.crt
-/usr/bin/openssl ca -gencrl -config etc/ssl/openssl.cnf -name CA_root -cert etc/ssl/CA/root/certs/ca-root.crt -keyfile etc/ssl/CA/root/private/ca-root.key.enc -out etc/ssl/CA/root/revoked/ca-root.crl -passin stdin
-/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -aes-256-cbc -out etc/ssl//private/localhost.key.enc -pass stdin
-/usr/bin/openssl rsa -in etc/ssl//private/localhost.key.enc -out etc/ssl//private/localhost.key -passin stdin
-/usr/bin/openssl req -new -utf8 -config etc/ssl/openssl.cnf -out etc/ssl/CA/intermediate/csr/localhost.csr -key etc/ssl//private/localhost.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=localhost -passin stdin
-/usr/bin/openssl ca -config etc/ssl/openssl.cnf -name CA_default -extensions usr_cert -notext -batch -passin stdin -cert etc/ssl/CA/intermediate/certs/ca-intermediate.crt -keyfile etc/ssl/CA/intermediate/private/ca-intermediate.key.enc -out etc/ssl//certs/localhost.crt -infiles etc/ssl/CA/intermediate/csr/localhost.csr
-/usr/bin/openssl verify -partial_chain -CAfile etc/ssl/CA/intermediate/certs/ca-intermediate.crt etc/ssl//certs/localhost.crt
-/usr/bin/openssl ca -gencrl -config etc/ssl/openssl.cnf -name CA_default -cert etc/ssl/CA/intermediate/certs/ca-intermediate.crt -keyfile etc/ssl/CA/intermediate/private/ca-intermediate.key.enc -out etc/ssl/CA/intermediate/revoked/ca-intermediate.crl -passin stdin
+/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out ssl/CA-root/private/ca-root.key.enc -pass stdin
+/usr/bin/openssl req -new -x509 -extensions v3_ca -sha512 -days 9125 -config ssl/openssl.cnf -utf8 -out ssl/CA-root/certs/ca-root.crt -key ssl/CA-root/private/ca-root.key.enc -subj /C=\?\?/L=City/O=organisation/CN=ca-root-name -passin stdin
+/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out ssl/CA-intermediate/private/ca-intermediate.key.enc -pass stdin
+/usr/bin/openssl req -new -utf8 -config ssl/openssl.cnf -out ssl/CA-root/csr/ca-intermediate.csr -key ssl/CA-intermediate/private/ca-intermediate.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=ca-intermediate-name -passin stdin
+/usr/bin/openssl ca -config ssl/openssl.cnf -name CA_root -extensions v3_intermediate_ca -notext -batch -passin stdin -cert ssl/CA-root/certs/ca-root.crt -keyfile ssl/CA-root/private/ca-root.key.enc -out ssl/CA-intermediate/certs/ca-intermediate.crt -infiles ssl/CA-root/csr/ca-intermediate.csr
+/usr/bin/openssl verify -partial_chain -CAfile ssl/CA-root/certs/ca-root.crt ssl/CA-intermediate/certs/ca-intermediate.crt
+/usr/bin/openssl ca -gencrl -config ssl/openssl.cnf -name CA_root -cert ssl/CA-root/certs/ca-root.crt -keyfile ssl/CA-root/private/ca-root.key.enc -out ssl/CA-root/revoked/ca-root.crl -passin stdin
+/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -aes-256-cbc -out ssl//private/localhost.key.enc -pass stdin
+/usr/bin/openssl rsa -in ssl//private/localhost.key.enc -out ssl//private/localhost.key -passin stdin
+/usr/bin/openssl req -new -utf8 -config ssl/openssl.cnf -out ssl/CA-intermediate/csr/localhost.csr -key ssl//private/localhost.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=localhost -passin stdin
+/usr/bin/openssl ca -config ssl/openssl.cnf -name CA_default -extensions usr_cert -notext -batch -passin stdin -cert ssl/CA-intermediate/certs/ca-intermediate.crt -keyfile ssl/CA-intermediate/private/ca-intermediate.key.enc -out ssl//certs/localhost.crt -infiles ssl/CA-intermediate/csr/localhost.csr
+/usr/bin/openssl verify -partial_chain -CAfile ssl/CA-intermediate/certs/ca-intermediate.crt ssl//certs/localhost.crt
+/usr/bin/openssl ca -gencrl -config ssl/openssl.cnf -name CA_default -cert ssl/CA-intermediate/certs/ca-intermediate.crt -keyfile ssl/CA-intermediate/private/ca-intermediate.key.enc -out ssl/CA-intermediate/revoked/ca-intermediate.crl -passin stdin
 EOF
 
 # create complete chain, re-create all private keys
 CHMOD=keys \
 execTest $LINENO 0 --genpkey=ca-root,ca-intermediate,localhost <<"EOF"
-/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out etc/ssl/CA/root/private/ca-root.key.enc -pass stdin
-/usr/bin/openssl req -new -x509 -extensions v3_ca -sha512 -days 9125 -config etc/ssl/openssl.cnf -utf8 -out etc/ssl/CA/root/certs/ca-root.crt -key etc/ssl/CA/root/private/ca-root.key.enc -subj /C=\?\?/L=City/O=organisation/CN=ca-root-name -passin stdin
-/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out etc/ssl/CA/intermediate/private/ca-intermediate.key.enc -pass stdin
-/usr/bin/openssl req -new -utf8 -config etc/ssl/openssl.cnf -out etc/ssl/CA/root/csr/ca-intermediate.csr -key etc/ssl/CA/intermediate/private/ca-intermediate.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=ca-intermediate-name -passin stdin
-/usr/bin/openssl ca -config etc/ssl/openssl.cnf -name CA_root -extensions v3_intermediate_ca -notext -batch -passin stdin -cert etc/ssl/CA/root/certs/ca-root.crt -keyfile etc/ssl/CA/root/private/ca-root.key.enc -out etc/ssl/CA/intermediate/certs/ca-intermediate.crt -infiles etc/ssl/CA/root/csr/ca-intermediate.csr
-/usr/bin/openssl verify -partial_chain -CAfile etc/ssl/CA/root/certs/ca-root.crt etc/ssl/CA/intermediate/certs/ca-intermediate.crt
-/usr/bin/openssl ca -gencrl -config etc/ssl/openssl.cnf -name CA_root -cert etc/ssl/CA/root/certs/ca-root.crt -keyfile etc/ssl/CA/root/private/ca-root.key.enc -out etc/ssl/CA/root/revoked/ca-root.crl -passin stdin
-/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -aes-256-cbc -out etc/ssl//private/localhost.key.enc -pass stdin
-/usr/bin/openssl rsa -in etc/ssl//private/localhost.key.enc -out etc/ssl//private/localhost.key -passin stdin
-/usr/bin/openssl req -new -utf8 -config etc/ssl/openssl.cnf -out etc/ssl/CA/intermediate/csr/localhost.csr -key etc/ssl//private/localhost.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=localhost -passin stdin
-/usr/bin/openssl ca -config etc/ssl/openssl.cnf -name CA_default -extensions usr_cert -notext -batch -passin stdin -cert etc/ssl/CA/intermediate/certs/ca-intermediate.crt -keyfile etc/ssl/CA/intermediate/private/ca-intermediate.key.enc -out etc/ssl//certs/localhost.crt -infiles etc/ssl/CA/intermediate/csr/localhost.csr
-/usr/bin/openssl verify -partial_chain -CAfile etc/ssl/CA/intermediate/certs/ca-intermediate.crt etc/ssl//certs/localhost.crt
-/usr/bin/openssl ca -gencrl -config etc/ssl/openssl.cnf -name CA_default -cert etc/ssl/CA/intermediate/certs/ca-intermediate.crt -keyfile etc/ssl/CA/intermediate/private/ca-intermediate.key.enc -out etc/ssl/CA/intermediate/revoked/ca-intermediate.crl -passin stdin
+/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out ssl/CA-root/private/ca-root.key.enc -pass stdin
+/usr/bin/openssl req -new -x509 -extensions v3_ca -sha512 -days 9125 -config ssl/openssl.cnf -utf8 -out ssl/CA-root/certs/ca-root.crt -key ssl/CA-root/private/ca-root.key.enc -subj /C=\?\?/L=City/O=organisation/CN=ca-root-name -passin stdin
+/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out ssl/CA-intermediate/private/ca-intermediate.key.enc -pass stdin
+/usr/bin/openssl req -new -utf8 -config ssl/openssl.cnf -out ssl/CA-root/csr/ca-intermediate.csr -key ssl/CA-intermediate/private/ca-intermediate.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=ca-intermediate-name -passin stdin
+/usr/bin/openssl ca -config ssl/openssl.cnf -name CA_root -extensions v3_intermediate_ca -notext -batch -passin stdin -cert ssl/CA-root/certs/ca-root.crt -keyfile ssl/CA-root/private/ca-root.key.enc -out ssl/CA-intermediate/certs/ca-intermediate.crt -infiles ssl/CA-root/csr/ca-intermediate.csr
+/usr/bin/openssl verify -partial_chain -CAfile ssl/CA-root/certs/ca-root.crt ssl/CA-intermediate/certs/ca-intermediate.crt
+/usr/bin/openssl ca -gencrl -config ssl/openssl.cnf -name CA_root -cert ssl/CA-root/certs/ca-root.crt -keyfile ssl/CA-root/private/ca-root.key.enc -out ssl/CA-root/revoked/ca-root.crl -passin stdin
+/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -aes-256-cbc -out ssl//private/localhost.key.enc -pass stdin
+/usr/bin/openssl rsa -in ssl//private/localhost.key.enc -out ssl//private/localhost.key -passin stdin
+/usr/bin/openssl req -new -utf8 -config ssl/openssl.cnf -out ssl/CA-intermediate/csr/localhost.csr -key ssl//private/localhost.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=localhost -passin stdin
+/usr/bin/openssl ca -config ssl/openssl.cnf -name CA_default -extensions usr_cert -notext -batch -passin stdin -cert ssl/CA-intermediate/certs/ca-intermediate.crt -keyfile ssl/CA-intermediate/private/ca-intermediate.key.enc -out ssl//certs/localhost.crt -infiles ssl/CA-intermediate/csr/localhost.csr
+/usr/bin/openssl verify -partial_chain -CAfile ssl/CA-intermediate/certs/ca-intermediate.crt ssl//certs/localhost.crt
+/usr/bin/openssl ca -gencrl -config ssl/openssl.cnf -name CA_default -cert ssl/CA-intermediate/certs/ca-intermediate.crt -keyfile ssl/CA-intermediate/private/ca-intermediate.key.enc -out ssl/CA-intermediate/revoked/ca-intermediate.crl -passin stdin
 EOF
 
 # create complete chain, re-create all private keys, use --separator
 
 CHMOD=keys \
 execTest $LINENO 0 --separator=' ' --genpkey='ca-root ca-intermediate localhost' <<"EOF"
-/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out etc/ssl/CA/root/private/ca-root.key.enc -pass stdin
-/usr/bin/openssl req -new -x509 -extensions v3_ca -sha512 -days 9125 -config etc/ssl/openssl.cnf -utf8 -out etc/ssl/CA/root/certs/ca-root.crt -key etc/ssl/CA/root/private/ca-root.key.enc -subj /C=\?\?/L=City/O=organisation/CN=ca-root-name -passin stdin
-/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out etc/ssl/CA/intermediate/private/ca-intermediate.key.enc -pass stdin
-/usr/bin/openssl req -new -utf8 -config etc/ssl/openssl.cnf -out etc/ssl/CA/root/csr/ca-intermediate.csr -key etc/ssl/CA/intermediate/private/ca-intermediate.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=ca-intermediate-name -passin stdin
-/usr/bin/openssl ca -config etc/ssl/openssl.cnf -name CA_root -extensions v3_intermediate_ca -notext -batch -passin stdin -cert etc/ssl/CA/root/certs/ca-root.crt -keyfile etc/ssl/CA/root/private/ca-root.key.enc -out etc/ssl/CA/intermediate/certs/ca-intermediate.crt -infiles etc/ssl/CA/root/csr/ca-intermediate.csr
-/usr/bin/openssl verify -partial_chain -CAfile etc/ssl/CA/root/certs/ca-root.crt etc/ssl/CA/intermediate/certs/ca-intermediate.crt
-/usr/bin/openssl ca -gencrl -config etc/ssl/openssl.cnf -name CA_root -cert etc/ssl/CA/root/certs/ca-root.crt -keyfile etc/ssl/CA/root/private/ca-root.key.enc -out etc/ssl/CA/root/revoked/ca-root.crl -passin stdin
-/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -aes-256-cbc -out etc/ssl//private/localhost.key.enc -pass stdin
-/usr/bin/openssl rsa -in etc/ssl//private/localhost.key.enc -out etc/ssl//private/localhost.key -passin stdin
-/usr/bin/openssl req -new -utf8 -config etc/ssl/openssl.cnf -out etc/ssl/CA/intermediate/csr/localhost.csr -key etc/ssl//private/localhost.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=localhost -passin stdin
-/usr/bin/openssl ca -config etc/ssl/openssl.cnf -name CA_default -extensions usr_cert -notext -batch -passin stdin -cert etc/ssl/CA/intermediate/certs/ca-intermediate.crt -keyfile etc/ssl/CA/intermediate/private/ca-intermediate.key.enc -out etc/ssl//certs/localhost.crt -infiles etc/ssl/CA/intermediate/csr/localhost.csr
-/usr/bin/openssl verify -partial_chain -CAfile etc/ssl/CA/intermediate/certs/ca-intermediate.crt etc/ssl//certs/localhost.crt
-/usr/bin/openssl ca -gencrl -config etc/ssl/openssl.cnf -name CA_default -cert etc/ssl/CA/intermediate/certs/ca-intermediate.crt -keyfile etc/ssl/CA/intermediate/private/ca-intermediate.key.enc -out etc/ssl/CA/intermediate/revoked/ca-intermediate.crl -passin stdin
+/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out ssl/CA-root/private/ca-root.key.enc -pass stdin
+/usr/bin/openssl req -new -x509 -extensions v3_ca -sha512 -days 9125 -config ssl/openssl.cnf -utf8 -out ssl/CA-root/certs/ca-root.crt -key ssl/CA-root/private/ca-root.key.enc -subj /C=\?\?/L=City/O=organisation/CN=ca-root-name -passin stdin
+/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out ssl/CA-intermediate/private/ca-intermediate.key.enc -pass stdin
+/usr/bin/openssl req -new -utf8 -config ssl/openssl.cnf -out ssl/CA-root/csr/ca-intermediate.csr -key ssl/CA-intermediate/private/ca-intermediate.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=ca-intermediate-name -passin stdin
+/usr/bin/openssl ca -config ssl/openssl.cnf -name CA_root -extensions v3_intermediate_ca -notext -batch -passin stdin -cert ssl/CA-root/certs/ca-root.crt -keyfile ssl/CA-root/private/ca-root.key.enc -out ssl/CA-intermediate/certs/ca-intermediate.crt -infiles ssl/CA-root/csr/ca-intermediate.csr
+/usr/bin/openssl verify -partial_chain -CAfile ssl/CA-root/certs/ca-root.crt ssl/CA-intermediate/certs/ca-intermediate.crt
+/usr/bin/openssl ca -gencrl -config ssl/openssl.cnf -name CA_root -cert ssl/CA-root/certs/ca-root.crt -keyfile ssl/CA-root/private/ca-root.key.enc -out ssl/CA-root/revoked/ca-root.crl -passin stdin
+/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -aes-256-cbc -out ssl//private/localhost.key.enc -pass stdin
+/usr/bin/openssl rsa -in ssl//private/localhost.key.enc -out ssl//private/localhost.key -passin stdin
+/usr/bin/openssl req -new -utf8 -config ssl/openssl.cnf -out ssl/CA-intermediate/csr/localhost.csr -key ssl//private/localhost.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=localhost -passin stdin
+/usr/bin/openssl ca -config ssl/openssl.cnf -name CA_default -extensions usr_cert -notext -batch -passin stdin -cert ssl/CA-intermediate/certs/ca-intermediate.crt -keyfile ssl/CA-intermediate/private/ca-intermediate.key.enc -out ssl//certs/localhost.crt -infiles ssl/CA-intermediate/csr/localhost.csr
+/usr/bin/openssl verify -partial_chain -CAfile ssl/CA-intermediate/certs/ca-intermediate.crt ssl//certs/localhost.crt
+/usr/bin/openssl ca -gencrl -config ssl/openssl.cnf -name CA_default -cert ssl/CA-intermediate/certs/ca-intermediate.crt -keyfile ssl/CA-intermediate/private/ca-intermediate.key.enc -out ssl/CA-intermediate/revoked/ca-intermediate.crl -passin stdin
 EOF
 
 # create complete chain with existing keys
 
 execTest $LINENO 0 ca-root ca-intermediate localhost <<"EOF"
-/usr/bin/openssl req -new -x509 -extensions v3_ca -sha512 -days 9125 -config etc/ssl/openssl.cnf -utf8 -out etc/ssl/CA/root/certs/ca-root.crt -key etc/ssl/CA/root/private/ca-root.key.enc -subj /C=\?\?/L=City/O=organisation/CN=ca-root-name -passin stdin
-/usr/bin/openssl req -new -utf8 -config etc/ssl/openssl.cnf -out etc/ssl/CA/root/csr/ca-intermediate.csr -key etc/ssl/CA/intermediate/private/ca-intermediate.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=ca-intermediate-name -passin stdin
-/usr/bin/openssl ca -config etc/ssl/openssl.cnf -name CA_root -extensions v3_intermediate_ca -notext -batch -passin stdin -cert etc/ssl/CA/root/certs/ca-root.crt -keyfile etc/ssl/CA/root/private/ca-root.key.enc -out etc/ssl/CA/intermediate/certs/ca-intermediate.crt -infiles etc/ssl/CA/root/csr/ca-intermediate.csr
-/usr/bin/openssl verify -partial_chain -CAfile etc/ssl/CA/root/certs/ca-root.crt etc/ssl/CA/intermediate/certs/ca-intermediate.crt
-/usr/bin/openssl ca -gencrl -config etc/ssl/openssl.cnf -name CA_root -cert etc/ssl/CA/root/certs/ca-root.crt -keyfile etc/ssl/CA/root/private/ca-root.key.enc -out etc/ssl/CA/root/revoked/ca-root.crl -passin stdin
-/usr/bin/openssl req -new -utf8 -config etc/ssl/openssl.cnf -out etc/ssl/CA/intermediate/csr/localhost.csr -key etc/ssl//private/localhost.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=localhost -passin stdin
-/usr/bin/openssl ca -config etc/ssl/openssl.cnf -name CA_default -extensions usr_cert -notext -batch -passin stdin -cert etc/ssl/CA/intermediate/certs/ca-intermediate.crt -keyfile etc/ssl/CA/intermediate/private/ca-intermediate.key.enc -out etc/ssl//certs/localhost.crt -infiles etc/ssl/CA/intermediate/csr/localhost.csr
-/usr/bin/openssl verify -partial_chain -CAfile etc/ssl/CA/intermediate/certs/ca-intermediate.crt etc/ssl//certs/localhost.crt
-/usr/bin/openssl ca -gencrl -config etc/ssl/openssl.cnf -name CA_default -cert etc/ssl/CA/intermediate/certs/ca-intermediate.crt -keyfile etc/ssl/CA/intermediate/private/ca-intermediate.key.enc -out etc/ssl/CA/intermediate/revoked/ca-intermediate.crl -passin stdin
+/usr/bin/openssl req -new -x509 -extensions v3_ca -sha512 -days 9125 -config ssl/openssl.cnf -utf8 -out ssl/CA-root/certs/ca-root.crt -key ssl/CA-root/private/ca-root.key.enc -subj /C=\?\?/L=City/O=organisation/CN=ca-root-name -passin stdin
+/usr/bin/openssl req -new -utf8 -config ssl/openssl.cnf -out ssl/CA-root/csr/ca-intermediate.csr -key ssl/CA-intermediate/private/ca-intermediate.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=ca-intermediate-name -passin stdin
+/usr/bin/openssl ca -config ssl/openssl.cnf -name CA_root -extensions v3_intermediate_ca -notext -batch -passin stdin -cert ssl/CA-root/certs/ca-root.crt -keyfile ssl/CA-root/private/ca-root.key.enc -out ssl/CA-intermediate/certs/ca-intermediate.crt -infiles ssl/CA-root/csr/ca-intermediate.csr
+/usr/bin/openssl verify -partial_chain -CAfile ssl/CA-root/certs/ca-root.crt ssl/CA-intermediate/certs/ca-intermediate.crt
+/usr/bin/openssl ca -gencrl -config ssl/openssl.cnf -name CA_root -cert ssl/CA-root/certs/ca-root.crt -keyfile ssl/CA-root/private/ca-root.key.enc -out ssl/CA-root/revoked/ca-root.crl -passin stdin
+/usr/bin/openssl req -new -utf8 -config ssl/openssl.cnf -out ssl/CA-intermediate/csr/localhost.csr -key ssl//private/localhost.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=localhost -passin stdin
+/usr/bin/openssl ca -config ssl/openssl.cnf -name CA_default -extensions usr_cert -notext -batch -passin stdin -cert ssl/CA-intermediate/certs/ca-intermediate.crt -keyfile ssl/CA-intermediate/private/ca-intermediate.key.enc -out ssl//certs/localhost.crt -infiles ssl/CA-intermediate/csr/localhost.csr
+/usr/bin/openssl verify -partial_chain -CAfile ssl/CA-intermediate/certs/ca-intermediate.crt ssl//certs/localhost.crt
+/usr/bin/openssl ca -gencrl -config ssl/openssl.cnf -name CA_default -cert ssl/CA-intermediate/certs/ca-intermediate.crt -keyfile ssl/CA-intermediate/private/ca-intermediate.key.enc -out ssl/CA-intermediate/revoked/ca-intermediate.crl -passin stdin
 EOF
 
 # create user cert only
 
 execTest $LINENO 0 localhost <<"EOF"
-/usr/bin/openssl req -new -utf8 -config etc/ssl/openssl.cnf -out etc/ssl/CA/intermediate/csr/localhost.csr -key etc/ssl//private/localhost.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=localhost -passin stdin
-/usr/bin/openssl ca -config etc/ssl/openssl.cnf -name CA_default -extensions usr_cert -notext -batch -passin stdin -cert etc/ssl/CA/intermediate/certs/ca-intermediate.crt -keyfile etc/ssl/CA/intermediate/private/ca-intermediate.key.enc -out etc/ssl//certs/localhost.crt -infiles etc/ssl/CA/intermediate/csr/localhost.csr
-/usr/bin/openssl verify -partial_chain -CAfile etc/ssl/CA/intermediate/certs/ca-intermediate.crt etc/ssl//certs/localhost.crt
-/usr/bin/openssl ca -gencrl -config etc/ssl/openssl.cnf -name CA_default -cert etc/ssl/CA/intermediate/certs/ca-intermediate.crt -keyfile etc/ssl/CA/intermediate/private/ca-intermediate.key.enc -out etc/ssl/CA/intermediate/revoked/ca-intermediate.crl -passin stdin
+/usr/bin/openssl req -new -utf8 -config ssl/openssl.cnf -out ssl/CA-intermediate/csr/localhost.csr -key ssl//private/localhost.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=localhost -passin stdin
+/usr/bin/openssl ca -config ssl/openssl.cnf -name CA_default -extensions usr_cert -notext -batch -passin stdin -cert ssl/CA-intermediate/certs/ca-intermediate.crt -keyfile ssl/CA-intermediate/private/ca-intermediate.key.enc -out ssl//certs/localhost.crt -infiles ssl/CA-intermediate/csr/localhost.csr
+/usr/bin/openssl verify -partial_chain -CAfile ssl/CA-intermediate/certs/ca-intermediate.crt ssl//certs/localhost.crt
+/usr/bin/openssl ca -gencrl -config ssl/openssl.cnf -name CA_default -cert ssl/CA-intermediate/certs/ca-intermediate.crt -keyfile ssl/CA-intermediate/private/ca-intermediate.key.enc -out ssl/CA-intermediate/revoked/ca-intermediate.crl -passin stdin
 EOF
 
 # "forget" to create CAs
 
-RMDIRS=etc,tmp \
+RMDIRS=ssl,tmp \
 execTest $LINENO 3 localhost <<"EOF"
 [37;1mChecking for CA certificate:[m
   [31mca-intermediate certificate not found.[m
@@ -161,39 +161,38 @@ EOF
 
 # Use ssldir containing spaces
 
-execTest $LINENO 0 --ssldir="etc/ssldir with spaces" ca-root ca-intermediate localhost <<"EOF"
-/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out etc/ssldir\ with\ spaces/CA/root/private/ca-root.key.enc -pass stdin
-/usr/bin/openssl req -new -x509 -extensions v3_ca -sha512 -days 9125 -config etc/ssldir\ with\ spaces/openssl.cnf -utf8 -out etc/ssldir\ with\ spaces/CA/root/certs/ca-root.crt -key etc/ssldir\ with\ spaces/CA/root/private/ca-root.key.enc -subj /C=\?\?/L=City/O=organisation/CN=ca-root-name -passin stdin
-/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out etc/ssldir\ with\ spaces/CA/intermediate/private/ca-intermediate.key.enc -pass stdin
-/usr/bin/openssl req -new -utf8 -config etc/ssldir\ with\ spaces/openssl.cnf -out etc/ssldir\ with\ spaces/CA/root/csr/ca-intermediate.csr -key etc/ssldir\ with\ spaces/CA/intermediate/private/ca-intermediate.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=ca-intermediate-name -passin stdin
-/usr/bin/openssl ca -config etc/ssldir\ with\ spaces/openssl.cnf -name CA_root -extensions v3_intermediate_ca -notext -batch -passin stdin -cert etc/ssldir\ with\ spaces/CA/root/certs/ca-root.crt -keyfile etc/ssldir\ with\ spaces/CA/root/private/ca-root.key.enc -out etc/ssldir\ with\ spaces/CA/intermediate/certs/ca-intermediate.crt -infiles etc/ssldir\ with\ spaces/CA/root/csr/ca-intermediate.csr
-/usr/bin/openssl verify -partial_chain -CAfile etc/ssldir\ with\ spaces/CA/root/certs/ca-root.crt etc/ssldir\ with\ spaces/CA/intermediate/certs/ca-intermediate.crt
-/usr/bin/openssl ca -gencrl -config etc/ssldir\ with\ spaces/openssl.cnf -name CA_root -cert etc/ssldir\ with\ spaces/CA/root/certs/ca-root.crt -keyfile etc/ssldir\ with\ spaces/CA/root/private/ca-root.key.enc -out etc/ssldir\ with\ spaces/CA/root/revoked/ca-root.crl -passin stdin
-/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -aes-256-cbc -out etc/ssldir\ with\ spaces//private/localhost.key.enc -pass stdin
-/usr/bin/openssl rsa -in etc/ssldir\ with\ spaces//private/localhost.key.enc -out etc/ssldir\ with\ spaces//private/localhost.key -passin stdin
-/usr/bin/openssl req -new -utf8 -config etc/ssldir\ with\ spaces/openssl.cnf -out etc/ssldir\ with\ spaces/CA/intermediate/csr/localhost.csr -key etc/ssldir\ with\ spaces//private/localhost.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=localhost -passin stdin
-/usr/bin/openssl ca -config etc/ssldir\ with\ spaces/openssl.cnf -name CA_default -extensions usr_cert -notext -batch -passin stdin -cert etc/ssldir\ with\ spaces/CA/intermediate/certs/ca-intermediate.crt -keyfile etc/ssldir\ with\ spaces/CA/intermediate/private/ca-intermediate.key.enc -out etc/ssldir\ with\ spaces//certs/localhost.crt -infiles etc/ssldir\ with\ spaces/CA/intermediate/csr/localhost.csr
-/usr/bin/openssl verify -partial_chain -CAfile etc/ssldir\ with\ spaces/CA/intermediate/certs/ca-intermediate.crt etc/ssldir\ with\ spaces//certs/localhost.crt
-/usr/bin/openssl ca -gencrl -config etc/ssldir\ with\ spaces/openssl.cnf -name CA_default -cert etc/ssldir\ with\ spaces/CA/intermediate/certs/ca-intermediate.crt -keyfile etc/ssldir\ with\ spaces/CA/intermediate/private/ca-intermediate.key.enc -out etc/ssldir\ with\ spaces/CA/intermediate/revoked/ca-intermediate.crl -passin stdin
+execTest $LINENO 0 --ssldir="ssl/subdir with spaces" ca-root ca-intermediate localhost <<"EOF"
+/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out ssl/subdir\ with\ spaces/CA-root/private/ca-root.key.enc -pass stdin
+/usr/bin/openssl req -new -x509 -extensions v3_ca -sha512 -days 9125 -config ssl/subdir\ with\ spaces/openssl.cnf -utf8 -out ssl/subdir\ with\ spaces/CA-root/certs/ca-root.crt -key ssl/subdir\ with\ spaces/CA-root/private/ca-root.key.enc -subj /C=\?\?/L=City/O=organisation/CN=ca-root-name -passin stdin
+/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out ssl/subdir\ with\ spaces/CA-intermediate/private/ca-intermediate.key.enc -pass stdin
+/usr/bin/openssl req -new -utf8 -config ssl/subdir\ with\ spaces/openssl.cnf -out ssl/subdir\ with\ spaces/CA-root/csr/ca-intermediate.csr -key ssl/subdir\ with\ spaces/CA-intermediate/private/ca-intermediate.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=ca-intermediate-name -passin stdin
+/usr/bin/openssl ca -config ssl/subdir\ with\ spaces/openssl.cnf -name CA_root -extensions v3_intermediate_ca -notext -batch -passin stdin -cert ssl/subdir\ with\ spaces/CA-root/certs/ca-root.crt -keyfile ssl/subdir\ with\ spaces/CA-root/private/ca-root.key.enc -out ssl/subdir\ with\ spaces/CA-intermediate/certs/ca-intermediate.crt -infiles ssl/subdir\ with\ spaces/CA-root/csr/ca-intermediate.csr
+/usr/bin/openssl verify -partial_chain -CAfile ssl/subdir\ with\ spaces/CA-root/certs/ca-root.crt ssl/subdir\ with\ spaces/CA-intermediate/certs/ca-intermediate.crt
+/usr/bin/openssl ca -gencrl -config ssl/subdir\ with\ spaces/openssl.cnf -name CA_root -cert ssl/subdir\ with\ spaces/CA-root/certs/ca-root.crt -keyfile ssl/subdir\ with\ spaces/CA-root/private/ca-root.key.enc -out ssl/subdir\ with\ spaces/CA-root/revoked/ca-root.crl -passin stdin
+/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -aes-256-cbc -out ssl/subdir\ with\ spaces//private/localhost.key.enc -pass stdin
+/usr/bin/openssl rsa -in ssl/subdir\ with\ spaces//private/localhost.key.enc -out ssl/subdir\ with\ spaces//private/localhost.key -passin stdin
+/usr/bin/openssl req -new -utf8 -config ssl/subdir\ with\ spaces/openssl.cnf -out ssl/subdir\ with\ spaces/CA-intermediate/csr/localhost.csr -key ssl/subdir\ with\ spaces//private/localhost.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=localhost -passin stdin
+/usr/bin/openssl ca -config ssl/subdir\ with\ spaces/openssl.cnf -name CA_default -extensions usr_cert -notext -batch -passin stdin -cert ssl/subdir\ with\ spaces/CA-intermediate/certs/ca-intermediate.crt -keyfile ssl/subdir\ with\ spaces/CA-intermediate/private/ca-intermediate.key.enc -out ssl/subdir\ with\ spaces//certs/localhost.crt -infiles ssl/subdir\ with\ spaces/CA-intermediate/csr/localhost.csr
+/usr/bin/openssl verify -partial_chain -CAfile ssl/subdir\ with\ spaces/CA-intermediate/certs/ca-intermediate.crt ssl/subdir\ with\ spaces//certs/localhost.crt
+/usr/bin/openssl ca -gencrl -config ssl/subdir\ with\ spaces/openssl.cnf -name CA_default -cert ssl/subdir\ with\ spaces/CA-intermediate/certs/ca-intermediate.crt -keyfile ssl/subdir\ with\ spaces/CA-intermediate/private/ca-intermediate.key.enc -out ssl/subdir\ with\ spaces/CA-intermediate/revoked/ca-intermediate.crl -passin stdin
 EOF
 
 # Use ssldir from JSON
 
-mkdir -p "$scriptdir/etc"
-jq '.ssldir="etc/ssldir from json"' mkcert-ca-complete.conf.json > "$scriptdir/etc/mkcert.json"
+jq '.ssldir="ssl/subdir from json"' mkcert-ca-complete.conf.json > "$scriptdir/ssl/mkcert.json"
 
-execTest $LINENO 0 --config="$scriptdir/etc/mkcert.json" ca-root ca-intermediate localhost <<"EOF"
-/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out etc/ssldir\ from\ json/CA/root/private/ca-root.key.enc -pass stdin
-/usr/bin/openssl req -new -x509 -extensions v3_ca -sha512 -days 9125 -config etc/ssldir\ from\ json/openssl.cnf -utf8 -out etc/ssldir\ from\ json/CA/root/certs/ca-root.crt -key etc/ssldir\ from\ json/CA/root/private/ca-root.key.enc -subj /C=\?\?/L=City/O=organisation/CN=ca-root-name -passin stdin
-/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out etc/ssldir\ from\ json/CA/intermediate/private/ca-intermediate.key.enc -pass stdin
-/usr/bin/openssl req -new -utf8 -config etc/ssldir\ from\ json/openssl.cnf -out etc/ssldir\ from\ json/CA/root/csr/ca-intermediate.csr -key etc/ssldir\ from\ json/CA/intermediate/private/ca-intermediate.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=ca-intermediate-name -passin stdin
-/usr/bin/openssl ca -config etc/ssldir\ from\ json/openssl.cnf -name CA_root -extensions v3_intermediate_ca -notext -batch -passin stdin -cert etc/ssldir\ from\ json/CA/root/certs/ca-root.crt -keyfile etc/ssldir\ from\ json/CA/root/private/ca-root.key.enc -out etc/ssldir\ from\ json/CA/intermediate/certs/ca-intermediate.crt -infiles etc/ssldir\ from\ json/CA/root/csr/ca-intermediate.csr
-/usr/bin/openssl verify -partial_chain -CAfile etc/ssldir\ from\ json/CA/root/certs/ca-root.crt etc/ssldir\ from\ json/CA/intermediate/certs/ca-intermediate.crt
-/usr/bin/openssl ca -gencrl -config etc/ssldir\ from\ json/openssl.cnf -name CA_root -cert etc/ssldir\ from\ json/CA/root/certs/ca-root.crt -keyfile etc/ssldir\ from\ json/CA/root/private/ca-root.key.enc -out etc/ssldir\ from\ json/CA/root/revoked/ca-root.crl -passin stdin
-/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -aes-256-cbc -out etc/ssldir\ from\ json//private/localhost.key.enc -pass stdin
-/usr/bin/openssl rsa -in etc/ssldir\ from\ json//private/localhost.key.enc -out etc/ssldir\ from\ json//private/localhost.key -passin stdin
-/usr/bin/openssl req -new -utf8 -config etc/ssldir\ from\ json/openssl.cnf -out etc/ssldir\ from\ json/CA/intermediate/csr/localhost.csr -key etc/ssldir\ from\ json//private/localhost.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=localhost -passin stdin
-/usr/bin/openssl ca -config etc/ssldir\ from\ json/openssl.cnf -name CA_default -extensions usr_cert -notext -batch -passin stdin -cert etc/ssldir\ from\ json/CA/intermediate/certs/ca-intermediate.crt -keyfile etc/ssldir\ from\ json/CA/intermediate/private/ca-intermediate.key.enc -out etc/ssldir\ from\ json//certs/localhost.crt -infiles etc/ssldir\ from\ json/CA/intermediate/csr/localhost.csr
-/usr/bin/openssl verify -partial_chain -CAfile etc/ssldir\ from\ json/CA/intermediate/certs/ca-intermediate.crt etc/ssldir\ from\ json//certs/localhost.crt
-/usr/bin/openssl ca -gencrl -config etc/ssldir\ from\ json/openssl.cnf -name CA_default -cert etc/ssldir\ from\ json/CA/intermediate/certs/ca-intermediate.crt -keyfile etc/ssldir\ from\ json/CA/intermediate/private/ca-intermediate.key.enc -out etc/ssldir\ from\ json/CA/intermediate/revoked/ca-intermediate.crl -passin stdin
+execTest $LINENO 0 --config="$scriptdir/ssl/mkcert.json" ca-root ca-intermediate localhost <<"EOF"
+/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out ssl/subdir\ from\ json/CA-root/private/ca-root.key.enc -pass stdin
+/usr/bin/openssl req -new -x509 -extensions v3_ca -sha512 -days 9125 -config ssl/subdir\ from\ json/openssl.cnf -utf8 -out ssl/subdir\ from\ json/CA-root/certs/ca-root.crt -key ssl/subdir\ from\ json/CA-root/private/ca-root.key.enc -subj /C=\?\?/L=City/O=organisation/CN=ca-root-name -passin stdin
+/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:8192 -aes-256-cbc -out ssl/subdir\ from\ json/CA-intermediate/private/ca-intermediate.key.enc -pass stdin
+/usr/bin/openssl req -new -utf8 -config ssl/subdir\ from\ json/openssl.cnf -out ssl/subdir\ from\ json/CA-root/csr/ca-intermediate.csr -key ssl/subdir\ from\ json/CA-intermediate/private/ca-intermediate.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=ca-intermediate-name -passin stdin
+/usr/bin/openssl ca -config ssl/subdir\ from\ json/openssl.cnf -name CA_root -extensions v3_intermediate_ca -notext -batch -passin stdin -cert ssl/subdir\ from\ json/CA-root/certs/ca-root.crt -keyfile ssl/subdir\ from\ json/CA-root/private/ca-root.key.enc -out ssl/subdir\ from\ json/CA-intermediate/certs/ca-intermediate.crt -infiles ssl/subdir\ from\ json/CA-root/csr/ca-intermediate.csr
+/usr/bin/openssl verify -partial_chain -CAfile ssl/subdir\ from\ json/CA-root/certs/ca-root.crt ssl/subdir\ from\ json/CA-intermediate/certs/ca-intermediate.crt
+/usr/bin/openssl ca -gencrl -config ssl/subdir\ from\ json/openssl.cnf -name CA_root -cert ssl/subdir\ from\ json/CA-root/certs/ca-root.crt -keyfile ssl/subdir\ from\ json/CA-root/private/ca-root.key.enc -out ssl/subdir\ from\ json/CA-root/revoked/ca-root.crl -passin stdin
+/usr/bin/openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -aes-256-cbc -out ssl/subdir\ from\ json//private/localhost.key.enc -pass stdin
+/usr/bin/openssl rsa -in ssl/subdir\ from\ json//private/localhost.key.enc -out ssl/subdir\ from\ json//private/localhost.key -passin stdin
+/usr/bin/openssl req -new -utf8 -config ssl/subdir\ from\ json/openssl.cnf -out ssl/subdir\ from\ json/CA-intermediate/csr/localhost.csr -key ssl/subdir\ from\ json//private/localhost.key.enc -subj /C=\?\?/L=City/O=organisation/OU=unit/CN=localhost -passin stdin
+/usr/bin/openssl ca -config ssl/subdir\ from\ json/openssl.cnf -name CA_default -extensions usr_cert -notext -batch -passin stdin -cert ssl/subdir\ from\ json/CA-intermediate/certs/ca-intermediate.crt -keyfile ssl/subdir\ from\ json/CA-intermediate/private/ca-intermediate.key.enc -out ssl/subdir\ from\ json//certs/localhost.crt -infiles ssl/subdir\ from\ json/CA-intermediate/csr/localhost.csr
+/usr/bin/openssl verify -partial_chain -CAfile ssl/subdir\ from\ json/CA-intermediate/certs/ca-intermediate.crt ssl/subdir\ from\ json//certs/localhost.crt
+/usr/bin/openssl ca -gencrl -config ssl/subdir\ from\ json/openssl.cnf -name CA_default -cert ssl/subdir\ from\ json/CA-intermediate/certs/ca-intermediate.crt -keyfile ssl/subdir\ from\ json/CA-intermediate/private/ca-intermediate.key.enc -out ssl/subdir\ from\ json/CA-intermediate/revoked/ca-intermediate.crl -passin stdin
 EOF

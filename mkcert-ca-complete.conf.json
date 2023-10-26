@@ -1,12 +1,12 @@
 {
-	"ssldir": "etc/ssl",
+	"ssldir": "ssl",
 	"certs": [
 		{
 			"name": "ca-root",
 			"issuer": "ca-root",
 			"subject": "/C=??/L=City/O=organisation/CN=ca-root-name",
 			"ca": "root",
-			"dir": "CA/root",
+			"dir": "CA-root",
 			"passwd": "~/*'\"'\"'´`\"?!$h|#*",
 			"distcrl": "URI:https://www.example.com/CA/root.crl"
 		},
@@ -15,7 +15,7 @@
 			"issuer": "ca-root",
 			"subject": "/C=??/L=City/O=organisation/OU=unit/CN=ca-intermediate-name",
 			"ca": "intermediate",
-			"dir": "CA/intermediate",
+			"dir": "CA-intermediate",
 			"passwd": "'''\"\"\"``$(*)",
 			"distcrl": "URI:https://www.example.com/CA/intermediate.crl"
 		},
