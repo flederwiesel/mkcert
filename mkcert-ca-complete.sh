@@ -150,8 +150,9 @@ fromJson()
 cd "$scriptdir"
 
 ssldir=${ssldir:-$(jq -er '.ssldir' "$config")}
-ssldir="${ssldir:-etc/ssl}"
+ssldir="${ssldir:-ssl}"
 ssldir="${ssldir#./}"
+ssldir="${ssldir%%/}"
 
 mkdir -p "${ssldir}"
 
@@ -181,13 +182,13 @@ do
 		exit 1
 	fi
 
-	ca[pkey]="${ssldir}/${ca[dir]}/private/${ca[name]}.key"
-	ca[cert]="${ssldir}/${ca[dir]}/certs/${ca[name]}.crt"
-	ca[crl]="${ssldir}/${ca[dir]}/revoked/${ca[name]}.crl"
+	ca[pkey]="${ssldir:+$ssldir/}${ca[dir]:+${ca[dir]}/}private/${ca[name]}.key"
+	ca[cert]="${ssldir:+$ssldir/}${ca[dir]:+${ca[dir]}/}certs/${ca[name]}.crt"
+	ca[crl]="${ssldir:+$ssldir/}${ca[dir]:+${ca[dir]}/}revoked/${ca[name]}.crl"
 
-	user[pkey]="${ssldir}/${user[dir]}/private/${user[name]}.key"
-	user[csr]="${ssldir}/${ca[dir]}/csr/${user[name]}.csr"
-	user[cert]="${ssldir}/${user[dir]}/certs/${user[name]}.crt"
+	user[pkey]="${ssldir:+$ssldir/}${user[dir]:+${user[dir]}/}private/${user[name]}.key"
+	user[csr]="${ssldir:+$ssldir/}${ca[dir]:+${ca[dir]}/}csr/${user[name]}.csr"
+	user[cert]="${ssldir:+$ssldir/}${user[dir]:+${user[dir]}/}certs/${user[name]}.crt"
 
 	# Create config from template
 	sed "s:%{ssldir}:${ssldir}:g
@@ -195,34 +196,34 @@ do
 		s*%{distcrl}*${ca[distcrl]}*g
 		${user[altnames]:+s/\[usr_cert\]/&\nsubjectAltName = @alt_names/g}
 		${user[altnames]:+\$ a \\\n[alt_names]\n${user[altnames]// /\\n}}
-	" "${scriptdir}/openssl.cnf.template" > "${ssldir}/openssl.cnf"
+	" "${scriptdir}/openssl.cnf.template" > "${ssldir:+$ssldir/}openssl.cnf"
 
 	# Populate folder structure
 	for dir in csr database newcerts revoked
 	do
-		mkdir -p -m 0700 "${ssldir}/${ca[dir]}/$dir"
+		mkdir -p -m 0700 "${ssldir:+$ssldir/}${ca[dir]}/$dir"
 	done
 
-	touch "${ssldir}/${ca[dir]}/database/index.txt"
+	touch "${ssldir:+$ssldir/}${ca[dir]}/database/index.txt"
 
-	[ -f "${ssldir}/${ca[dir]}/database/index.txt.attr" ] ||
+	[ -f "${ssldir:+$ssldir/}${ca[dir]}/database/index.txt.attr" ] ||
 	{
-		echo 'unique_subject = no' > "${ssldir}/${ca[dir]}/database/index.txt.attr"
-		chmod 0600 "${ssldir}/${ca[dir]}/database/index.txt.attr"
+		echo 'unique_subject = no' > "${ssldir:+$ssldir/}${ca[dir]}/database/index.txt.attr"
+		chmod 0600 "${ssldir:+$ssldir/}${ca[dir]}/database/index.txt.attr"
 	}
-	[ -f "${ssldir}/${ca[dir]}/database/serial" ] ||
+	[ -f "${ssldir:+$ssldir/}${ca[dir]}/database/serial" ] ||
 	{
-		echo '1000' > "${ssldir}/${ca[dir]}/database/serial"
-		chmod 0600 "${ssldir}/${ca[dir]}/database/serial"
+		echo '1000' > "${ssldir:+$ssldir/}${ca[dir]}/database/serial"
+		chmod 0600 "${ssldir:+$ssldir/}${ca[dir]}/database/serial"
 	}
-	[ -f "${ssldir}/${ca[name]}/revoked/crlnumber" ] ||
+	[ -f "${ssldir:+$ssldir/}${ca[name]}/revoked/crlnumber" ] ||
 	{
-		echo '1000' > "${ssldir}/${ca[dir]}/revoked/crlnumber"
-		chmod 0600 "${ssldir}/${ca[dir]}/revoked/crlnumber"
+		echo '1000' > "${ssldir:+$ssldir/}${ca[dir]}/revoked/crlnumber"
+		chmod 0600 "${ssldir:+$ssldir/}${ca[dir]}/revoked/crlnumber"
 	}
 
-	mkdir -p -m 0700 "${ssldir}/${user[dir]}/certs"
-	mkdir -p -m 0700 "${ssldir}/${user[dir]}/private"
+	mkdir -p -m 0700 "${ssldir:+$ssldir/}${user[dir]}/certs"
+	mkdir -p -m 0700 "${ssldir:+$ssldir/}${user[dir]}/private"
 
 	# For intermediate CAs and user certificates we need an issuing CA cert
 	if [[ ${user[ca]} != root ]]; then
@@ -282,7 +283,7 @@ do
 				openssl req \
 					-new \
 					-x509 -extensions v3_ca -sha512 -days 9125 \
-					-config "${ssldir}/openssl.cnf" \
+					-config "${ssldir:+$ssldir/}openssl.cnf" \
 					-utf8 \
 					-out "${user[cert]}" \
 					-key "${ca[pkey]}.enc" \
@@ -300,7 +301,7 @@ do
 				openssl req \
 					-new \
 					-utf8 \
-					-config "${ssldir}/openssl.cnf" \
+					-config "${ssldir:+$ssldir/}openssl.cnf" \
 					-out "${user[csr]}" \
 					-key "${user[pkey]}.enc" \
 					-subj "${user[subject]}" \
@@ -325,7 +326,7 @@ do
 
 		if result=$(echo -n "${ca[passwd]}" |
 				openssl ca \
-					-config "${ssldir}/openssl.cnf" \
+					-config "${ssldir:+$ssldir/}openssl.cnf" \
 					-name "$section" \
 					-extensions "$extensions" \
 					-notext \
@@ -355,7 +356,7 @@ do
 		if ! result=$(echo -n "${ca[passwd]}" |
 				openssl ca \
 					-gencrl \
-					-config "${ssldir}/openssl.cnf" \
+					-config "${ssldir:+$ssldir/}openssl.cnf" \
 					-name "$section" \
 					-cert "${ca[cert]}" \
 					-keyfile "${ca[pkey]}.enc" \
