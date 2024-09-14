@@ -368,11 +368,24 @@ do
 		fi
 	fi
 
-	if [[ intermediate == ${ca[ca]} ]]; then
-		chain=("${ca[cert]}" "${chain[@]}")
-	fi
-
 	if [[ ! ${user[ca]} ]]; then
+		# End entity
+		chain=()
+		name="${user[issuer]}"
+
+		while [[ $name ]]
+		do
+			declare -A "ca=($(fromJson "$name"))"
+
+			if [[ "${ca[ca]}" == "root" ]]; then
+				name=
+			else
+				cert="${ssldir:+$ssldir/}${ca[dir]:+${ca[dir]}/}certs/${ca[name]}.crt"
+				chain+=("$cert")
+				name="${ca[issuer]}"
+			fi
+		done
+
 		# Supply the chain of intermediate(s) with the certificate
 		cat "${user[cert]}" "${chain[@]}" > "${user[cert]%.crt}-chain.crt"
 		chmod 0644 "${user[cert]%.crt}-chain.crt"
